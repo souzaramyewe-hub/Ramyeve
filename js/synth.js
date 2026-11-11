@@ -6,7 +6,6 @@
 (function (global) {
   'use strict';
   const { mtof } = global.MT;
-  const SR = 44100;
   const STEMS = ['drums', 'bass', 'harmony', 'melody', 'voice'];
 
   /* ---------------- utilidades ---------------- */
@@ -488,6 +487,8 @@
     const stepDur = 60 / song.bpm / 4;
     const reverbSec = song.style.id === 'ambient' || song.style.id === 'classica' ? 3.5 : 2.2;
     const duration = song.totalBars * 16 * stepDur + reverbSec + 0.5;
+    // Músicas longas usam taxa de amostragem menor para caber na memória.
+    const SR = duration <= 240 ? 44100 : duration <= 480 ? 32000 : 22050;
     const total = Math.ceil(duration * SR);
     const tmp = new OfflineAudioContext(1, 1, SR);
     const shared = {
@@ -496,7 +497,12 @@
       dist: distCurve(6),
       softDist: distCurve(1.6),
     };
-    const out = Array.from({ length: STEMS.length * 2 }, () => new Float32Array(total));
+    const stems = {};
+    const out = [];
+    STEMS.forEach((name) => {
+      stems[name] = new AudioBuffer({ numberOfChannels: 2, length: total, sampleRate: SR });
+      out.push(stems[name].getChannelData(0), stems[name].getChannelData(1));
+    });
     const addInto = (buf, offsetSamples) => {
       for (let c = 0; c < out.length; c++) {
         const src = buf.getChannelData(c), dst = out[c];
@@ -505,7 +511,7 @@
       }
     };
 
-    // Blocos de ~4 s
+    // Blocos de ~4 s com as notas de cada trecho
     const events = collectEvents(song);
     const CHUNK = 4;
     const chunks = [];
@@ -513,58 +519,70 @@
       const list = events.filter((e) => e.t >= c0 && e.t < c0 + CHUNK);
       if (list.length) chunks.push({ c0, list });
     }
+
+    // Fontes longas (voz original, voz cantada, chiado de vinil), também em blocos
+    const longSources = [];
+    if (opts.voiceBuffer && song.voiceStartSec != null) {
+      longSources.push({ buffer: opts.voiceBuffer, when: song.voiceStartSec - song.voiceOffsetSec, gain: 1.4, bus: 'voice', comp: true });
+    }
+    if (opts.vocalBuffer) longSources.push({ buffer: opts.vocalBuffer, when: 0, gain: 1.6, bus: 'voice', comp: true });
+    const LCHUNK = 8;
+    const longChunks = [];
+    if (longSources.length || song.style.lofi) {
+      for (let c0 = 0; c0 < duration; c0 += LCHUNK) longChunks.push(c0);
+    }
+
+    const totalTasks = chunks.length + longChunks.length;
     let done = 0;
+    const progress = () => { done++; if (opts.onProgress) opts.onProgress(done / (totalTasks + 1)); };
+
     const tasks = chunks.map((ch) => async () => {
       const maxEnd = ch.list.reduce((m, e) => Math.max(m, e.end), 0);
       const len = Math.min(total - Math.floor(ch.c0 * SR), Math.ceil((maxEnd - ch.c0 + reverbSec) * SR));
       const ctx = new OfflineAudioContext(STEMS.length * 2, Math.max(128, len), SR);
       const B = buildBuses(ctx, song, shared);
       for (const e of ch.list) e.play(ctx, B, e.t - ch.c0);
-      const buf = await ctx.startRendering();
-      addInto(buf, Math.floor(ch.c0 * SR));
-      done++;
-      if (opts.onProgress) opts.onProgress(done / (chunks.length + 1));
+      addInto(await ctx.startRendering(), Math.floor(ch.c0 * SR));
+      progress();
     });
 
-    // Passo global: fontes longas (voz original e chiado de vinil)
-    tasks.push(async () => {
-      const needVoice = opts.voiceBuffer && song.voiceStartSec != null;
-      if (!needVoice && !song.style.lofi) return;
-      const ctx = new OfflineAudioContext(STEMS.length * 2, total, SR);
+    longChunks.forEach((c0) => tasks.push(async () => {
+      const c1 = Math.min(duration, c0 + LCHUNK);
+      const len = Math.min(total - Math.floor(c0 * SR), Math.ceil((c1 - c0 + reverbSec) * SR));
+      const ctx = new OfflineAudioContext(STEMS.length * 2, Math.max(128, len), SR);
       const B = buildBuses(ctx, song, shared);
       if (song.style.lofi) {
         const n = ctx.createBufferSource(); n.buffer = shared.noise; n.loop = true;
         const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
         const g = ctx.createGain(); g.gain.value = 0.012;
         n.connect(hp).connect(g).connect(B.buses.drums);
-        n.start(0);
+        n.start(0); n.stop(c1 - c0);
       }
-      if (needVoice) {
+      for (const ls of longSources) {
+        const startIn = ls.when - c0;                 // quando a fonte começa, relativo ao bloco
+        const srcOffset = Math.max(0, -startIn);      // quanto da fonte já passou
+        if (srcOffset >= ls.buffer.duration || startIn >= c1 - c0) continue;
         const src = ctx.createBufferSource();
-        src.buffer = opts.voiceBuffer;
+        src.buffer = ls.buffer;
         const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90;
-        const comp = ctx.createDynamicsCompressor();
-        comp.threshold.value = -24; comp.ratio.value = 4;
-        const g = ctx.createGain(); g.gain.value = 1.4;
-        src.connect(hp).connect(comp).connect(g).connect(B.buses.voice);
-        const when = song.voiceStartSec - song.voiceOffsetSec;
-        if (when >= 0) src.start(when); else src.start(0, -when);
+        let node = src.connect(hp);
+        if (ls.comp) {
+          const comp = ctx.createDynamicsCompressor();
+          comp.threshold.value = -24; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.15;
+          node = node.connect(comp);
+        }
+        const g = ctx.createGain(); g.gain.value = ls.gain;
+        node.connect(g).connect(B.buses[ls.bus]);
+        src.start(Math.max(0, startIn), srcOffset, Math.max(0.001, (c1 - c0) - Math.max(0, startIn)));
       }
-      addInto(await ctx.startRendering(), 0);
-    });
+      addInto(await ctx.startRendering(), Math.floor(c0 * SR));
+      progress();
+    }));
 
     const cores = (navigator.hardwareConcurrency || 4);
     await pool(tasks, Math.max(2, Math.min(4, cores)));
     if (opts.onProgress) opts.onProgress(1);
-
-    const stems = {};
-    STEMS.forEach((name, i) => {
-      const b = new AudioBuffer({ numberOfChannels: 2, length: total, sampleRate: SR });
-      b.copyToChannel(out[i * 2], 0);
-      b.copyToChannel(out[i * 2 + 1], 1);
-      stems[name] = b;
-    });
-    return { stems, duration, stepDur };
+    return { stems, duration, stepDur, sampleRate: SR };
   }
 
   global.Synth = { render, STEMS, stepToTime, INSTRUMENT_NAMES: Object.keys(INST) };

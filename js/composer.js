@@ -308,6 +308,50 @@
     return out;
   }
 
+  /* ================= Estrutura / duração ================= */
+
+  /*
+   * Monta a sequência de seções. Durações:
+   *  - 'auto': pelo tamanho da letra (cada linha = 2 compassos; refrão repete após cada verso)
+   *  - 'custom': o.minutes minutos (sem limite máximo)
+   *  - 'curta' | 'media' | 'longa'
+   */
+  function buildPlan(o, stanzas, bpm) {
+    const len = o.length || 'media';
+    if (len === 'auto' && stanzas.length) {
+      const sec = (st) => Math.max(4, st.length * 2);
+      const plan = [['intro', 4]];
+      if (stanzas.length === 1) {
+        plan.push(['verso', sec(stanzas[0]), stanzas[0]]);
+      } else {
+        const chorus = stanzas[1];
+        plan.push(['verso', sec(stanzas[0]), stanzas[0]], ['refrao', sec(chorus), chorus]);
+        for (let k = 2; k < stanzas.length; k++) {
+          plan.push(['verso', sec(stanzas[k]), stanzas[k]], ['refrao', sec(chorus), chorus]);
+        }
+      }
+      plan.push(['final', 4]);
+      return plan;
+    }
+    if (len === 'custom' && o.minutes > 0) {
+      const barSec = (4 * 60) / bpm;
+      const target = Math.max(6, Math.round((o.minutes * 60) / barSec));
+      const edge = target >= 16 ? 4 : 2;
+      const plan = [['intro', edge]];
+      let fill = target - 2 * edge;
+      const cycle = [['verso', 8], ['refrao', 8], ['verso', 8], ['refrao', 8], ['ponte', 4], ['refrao', 8]];
+      for (let i = 0; fill >= 2; i++) {
+        const [name, bars] = cycle[i % cycle.length];
+        const use = fill >= bars ? bars : Math.floor(fill / 2) * 2;
+        plan.push([name, use]);
+        fill -= use;
+      }
+      plan.push(['final', edge]);
+      return plan;
+    }
+    return LENGTHS[len] || LENGTHS.media;
+  }
+
   /* ================= Composição a partir de TEXTO ================= */
 
   function composeFromText(o) {
@@ -347,14 +391,14 @@
       },
     });
 
-    const plan = LENGTHS[o.length] || LENGTHS.media;
+    const plan = buildPlan(o, a.stanzas, bpm);
     const melodyCache = {};
     let bar = 0;
     let lastDeg = null;
     const stanzas = a.stanzas;
     let stanzaIdx = { verso: 0 };
 
-    plan.forEach(([section, bars], si) => {
+    plan.forEach(([section, bars, fixedLines], si) => {
       const nextSection = plan[si + 1] ? plan[si + 1][0] : null;
       const prog = section === 'refrao' ? progChorus : section === 'ponte' ? progBridge : progVerse;
       const chords = style.id === 'blues'
@@ -365,8 +409,8 @@
 
       // Melodia (verso, refrão, ponte)
       if (section === 'verso' || section === 'refrao' || section === 'ponte') {
-        let lines = null;
-        if (stanzas.length) {
+        let lines = fixedLines || null;
+        if (!lines && stanzas.length) {
           if (section === 'refrao') lines = stanzas.length > 1 ? stanzas[1] : stanzas[0];
           else if (section === 'verso') {
             const pool = stanzas.filter((_, i) => i !== 1 || stanzas.length === 1);
@@ -527,7 +571,7 @@
     mel = mel.map((n) => Object.assign(n, { midi: n.midi + shift + keyShift }));
 
     const melSteps = mel[mel.length - 1].step + mel[mel.length - 1].dur;
-    const melBars = Math.max(2, Math.min(16, Math.ceil(melSteps / SPB / 2) * 2));
+    const melBars = Math.max(2, Math.ceil(melSteps / SPB / 2) * 2); // sem limite de duração
     mel = mel.filter((n) => n.step < melBars * SPB);
 
     const progs = global.STYLES.getProgressions(style, mode);
@@ -548,7 +592,11 @@
     });
 
     const introBars = 2;
-    const plan = [['intro', introBars, chords.slice(-introBars)], ['melodia', melBars, chords], ['variacao', melBars, chords], ['final', 2, [chords[chords.length - 1], buildChord(key, mode, 0, chordOpts(style))]]];
+    // Melodias curtas ganham uma variação (repetição com arranjo); longas tocam uma vez.
+    const withVariation = melBars <= 16;
+    const plan = [['intro', introBars, chords.slice(-introBars)], ['melodia', melBars, chords]];
+    if (withVariation) plan.push(['variacao', melBars, chords]);
+    plan.push(['final', 2, [chords[chords.length - 1], buildChord(key, mode, 0, chordOpts(style))]]);
     let bar = 0;
     plan.forEach(([section, bars, chs], si) => {
       const nextSection = plan[si + 1] ? plan[si + 1][0] : null;
@@ -566,8 +614,10 @@
       bar += bars;
     });
     // Na variação, a melodia é dobrada uma oitava acima com outro timbre.
-    song.parts.lead2 = mel.map((n) => ({ step: (introBars + melBars) * SPB + n.step, dur: n.dur, midi: n.midi + 12, vel: 0.5 }));
-    song.instruments.lead2 = instruments.lead === 'bell' ? 'flute' : 'bell';
+    if (withVariation) {
+      song.parts.lead2 = mel.map((n) => ({ step: (introBars + melBars) * SPB + n.step, dur: n.dur, midi: n.midi + 12, vel: 0.5 }));
+      song.instruments.lead2 = instruments.lead === 'bell' ? 'flute' : 'bell';
+    }
     song.totalBars = bar;
     song.detectedKey = det;
     delete song._prevVoicing;

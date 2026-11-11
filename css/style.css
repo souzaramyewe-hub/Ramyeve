@@ -96,6 +96,21 @@ audio { width: 100%; margin: 6px 0; }
 .voice-info { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 
+.vocal { border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 12px; margin: 16px 0 0; }
+.vocal legend { font-weight: 700; padding: 0 6px; }
+.small { font-size: .82rem; margin: 10px 0 0; }
+.clone-box { background: var(--accent-soft); border-radius: 12px; padding: 12px; margin-top: 12px; }
+.clone-status { font-size: .92rem; margin-bottom: 8px; }
+.clone-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.wizard { margin-top: 12px; text-align: center; }
+.wizard p { text-align: left; margin: 0 0 10px; }
+.vowel-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.vowel-row span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--card); border: 1px solid var(--line); }
+.vowel-row span.now { background: var(--accent); color: #fff; border-color: var(--accent); }
+.vowel-row span.ok { background: #3ccf91; color: #fff; border-color: #3ccf91; }
+.big-vowel { font-size: 2.6rem; font-weight: 800; letter-spacing: .05em; margin: 6px 0 10px; min-height: 1.3em; }
+.wizard .meter { margin: 0 0 12px; height: 10px; }
+#cloneProgress { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
 .adv { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
 .adv summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 14px; }

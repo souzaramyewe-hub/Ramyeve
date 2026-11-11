@@ -66,11 +66,48 @@
   }
 
   /* Divide uma palavra em sílabas (aproximação para português). */
+  /* Divide uma palavra em sílabas (regras básicas do português). */
+  const VOW = 'aeiouáéíóúâêôãõàüy';
+  const CLUSTERS = ['br', 'cr', 'dr', 'fr', 'gr', 'pr', 'tr', 'vr', 'bl', 'cl', 'fl', 'gl', 'pl', 'tl', 'ch', 'lh', 'nh', 'qu', 'gu'];
   function syllabify(word) {
-    const V = 'aeiouáéíóúâêôãõàüy';
-    const re = new RegExp('[^' + V + ']*[' + V + ']+(?:[^' + V + ']*$|[^' + V + '](?=[^' + V + ']))?', 'gi');
-    const parts = word.match(re);
-    return parts && parts.length ? parts : [word];
+    const w = word;
+    const lw = w.toLowerCase();
+    const n = lw.length;
+    if (!n) return [word];
+    // classifica letras: vogal (true) ou consoante (false); "u" de qu/gu conta como consoante
+    const isVow = [];
+    for (let i = 0; i < n; i++) {
+      let v = VOW.includes(lw[i]);
+      if (lw[i] === 'u' && i > 0 && (lw[i - 1] === 'q' || lw[i - 1] === 'g') && i + 1 < n && VOW.includes(lw[i + 1])) v = false;
+      isVow.push(v);
+    }
+    // grupos de vogais (núcleos)
+    const nuclei = [];
+    for (let i = 0; i < n;) {
+      if (isVow[i]) { const a = i; while (i < n && isVow[i]) i++; nuclei.push([a, i]); } else i++;
+    }
+    if (nuclei.length <= 1) return [word];
+    const cuts = [];
+    for (let k = 0; k < nuclei.length - 1; k++) {
+      const a = nuclei[k][1], b = nuclei[k + 1][0]; // consoantes em [a, b)
+      const cons = lw.slice(a, b);
+      let cut;
+      if (cons.length === 0) cut = a;
+      else if (cons.length === 1) cut = a;
+      else {
+        const last2 = cons.slice(-2);
+        if (CLUSTERS.includes(last2) || (last2[1] === 'u' && (last2[0] === 'q' || last2[0] === 'g'))) cut = b - 2;
+        else cut = b - 1;
+        if (cut < a) cut = a;
+      }
+      if (cons.length === 0) continue; // ditongos/hiatos ficam juntos
+      cuts.push(cut);
+    }
+    const parts = [];
+    let prev = 0;
+    for (const c of cuts) { if (c > prev) { parts.push(w.slice(prev, c)); prev = c; } }
+    parts.push(w.slice(prev));
+    return parts.filter(Boolean);
   }
 
   function lyricsToStanzas(lyrics) {

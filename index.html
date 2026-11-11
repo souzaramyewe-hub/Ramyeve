@@ -35,10 +35,40 @@
 
         <label for="lyrics">Letra <span class="muted">(opcional — o ritmo da melodia segue as sílabas; deixe uma linha em branco entre verso e refrão)</span></label>
         <textarea id="lyrics" rows="5" placeholder="Olha o sol nascendo lá no mar&#10;Vem comigo, vem dançar&#10;&#10;É verão, é verão no meu coração&#10;Batucando sem parar"></textarea>
+
+        <fieldset class="vocal">
+          <legend>🎙️ Voz cantando a letra</legend>
+          <label class="check"><input type="checkbox" id="singOn" checked> Colocar uma voz cantando a letra na música</label>
+          <label for="singerSel">Quem canta</label>
+          <select id="singerSel">
+            <option value="clone" disabled>🧬 Minha voz clonada (clone sua voz abaixo)</option>
+            <option value="fem" selected>Voz sintética feminina</option>
+            <option value="masc">Voz sintética masculina</option>
+          </select>
+
+          <div class="clone-box">
+            <div class="clone-status">
+              <span id="cloneStatus">Nenhuma voz clonada ainda.</span>
+            </div>
+            <div class="clone-actions">
+              <button type="button" id="btnClone" class="btn">🧬 Clonar minha voz</button>
+              <button type="button" id="btnDemo" class="btn ghost">▶ Ouvir a voz</button>
+              <button type="button" id="btnDelClone" class="btn ghost hidden">🗑 Apagar</button>
+            </div>
+            <div id="cloneWizard" class="wizard hidden" aria-live="polite">
+              <p class="muted">Cante cada vogal de forma <b>contínua e afinada</b>, numa nota confortável, quando ela aparecer. Mantenha a mesma distância do microfone.</p>
+              <div class="vowel-row" id="vowelRow"></div>
+              <div class="big-vowel" id="bigVowel">Prepare-se…</div>
+              <div class="meter"><div id="cloneProgress"></div></div>
+              <button type="button" id="btnCancelClone" class="btn ghost">Cancelar</button>
+            </div>
+          </div>
+          <p class="muted small">A voz é clonada e guardada só neste aparelho. Use apenas a sua própria voz ou de quem autorizou.</p>
+        </fieldset>
       </div>
 
       <div class="panel hidden" id="panel-voz">
-        <p class="muted">Cante, cantarole ou assobie um trecho de melodia (até 30 s) — ou envie um áudio. O app detecta as notas, o tom e o andamento e cria o arranjo no estilo que você escolher.</p>
+        <p class="muted">Cante, cantarole ou assobie uma melodia — sem limite de tempo — ou envie um áudio. O app detecta as notas, o tom e o andamento e cria o arranjo no estilo que você escolher.</p>
         <div class="rec-row">
           <button id="btnRec" class="btn rec">● Gravar</button>
           <label class="btn ghost file">📁 Enviar áudio<input type="file" id="fileIn" accept="audio/*" hidden></label>
@@ -71,10 +101,15 @@
           </label>
           <label>Duração
             <select id="lenSel">
+              <option value="auto" selected>Livre (pelo tamanho da letra)</option>
               <option value="curta">Curta (~20 s)</option>
-              <option value="media" selected>Média (~1 min)</option>
+              <option value="media">Média (~1 min)</option>
               <option value="longa">Longa (~1,5 min)</option>
+              <option value="custom">Escolher minutos…</option>
             </select>
+          </label>
+          <label id="minutesWrap" class="hidden">Minutos
+            <input type="number" id="minutesIn" min="0.25" step="0.5" value="3" inputmode="decimal">
           </label>
           <label>Andamento: <b id="bpmLabel">automático</b>
             <input type="range" id="bpmIn" min="0" max="200" step="1" value="0">
@@ -123,6 +158,7 @@
   <script src="js/composer.js"></script>
   <script src="js/pitch.js"></script>
   <script src="js/synth.js"></script>
+  <script src="js/voice.js"></script>
   <script src="js/export.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -80,6 +80,122 @@
       if (state.song) Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
     };
     window.addEventListener('resize', drawRoll);
+    $('lenSel').onchange = () => $('minutesWrap').classList.toggle('hidden', $('lenSel').value !== 'custom');
+    $('btnClone').onclick = startClone;
+    $('btnCancelClone').onclick = () => { if (cloneRec) { cloneRec.cancelled = true; cloneRec.mr.stop(); } };
+    $('btnDemo').onclick = playDemo;
+    $('btnDelClone').onclick = async () => {
+      if (!confirm('Apagar a voz clonada deste aparelho?')) return;
+      await VoiceClone.deleteProfile();
+      state.cloneProfile = null;
+      updateCloneUI();
+    };
+    VoiceClone.loadProfile().then((p) => {
+      state.cloneProfile = p;
+      updateCloneUI();
+      if (p) $('singerSel').value = 'clone';
+    });
+  }
+
+  /* ---------------- clonagem de voz ---------------- */
+
+  let cloneRec = null;
+  const VOWEL_HINT = { a: 'A — “aaaa”', e: 'É — “éééé”', i: 'I — “iiii”', o: 'Ó — “óóóó”', u: 'U — “uuuu”' };
+
+  function singerProfile() {
+    const v = $('singerSel').value;
+    if (v === 'clone' && state.cloneProfile) return state.cloneProfile;
+    return VoiceClone.syntheticProfile(v === 'masc' ? 'masc' : 'fem');
+  }
+
+  function updateCloneUI() {
+    const p = state.cloneProfile;
+    const opt = $('singerSel').querySelector('option[value=clone]');
+    opt.disabled = !p;
+    opt.textContent = p ? '🧬 Minha voz clonada' : '🧬 Minha voz clonada (clone sua voz abaixo)';
+    if (!p && $('singerSel').value === 'clone') $('singerSel').value = 'fem';
+    $('btnDelClone').classList.toggle('hidden', !p);
+    $('btnClone').textContent = p ? '🔁 Clonar de novo' : '🧬 Clonar minha voz';
+    $('cloneStatus').innerHTML = p
+      ? '✅ <b>Voz clonada</b> em ' + new Date(p.created).toLocaleDateString('pt-BR') + ' · tom natural: ' + MT.midiToName(p.midi, true)
+      : 'Nenhuma voz clonada ainda. Leva ~15 segundos: você canta as 5 vogais.';
+  }
+
+  async function startClone() {
+    if (cloneRec) return;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (e) {
+      $('cloneStatus').textContent = '⚠️ Não foi possível acessar o microfone. Permita o acesso e tente de novo.';
+      return;
+    }
+    stop();
+    const V = VoiceClone.VOWELS, SEG = VoiceClone.SEG_SEC, LEAD = VoiceClone.LEAD_IN;
+    const totalSec = LEAD + V.length * SEG + 0.3;
+    $('cloneWizard').classList.remove('hidden');
+    $('btnClone').disabled = true;
+    $('vowelRow').innerHTML = V.map((v) => '<span>' + v.toUpperCase() + '</span>').join('');
+    const spans = $('vowelRow').querySelectorAll('span');
+    const mr = new MediaRecorder(stream);
+    const chunks = [];
+    cloneRec = { mr, cancelled: false };
+    let t0 = 0, raf = 0;
+    const tick = () => {
+      const s = t0 ? (performance.now() - t0) / 1000 : 0;
+      $('cloneProgress').style.width = Math.min(100, (s / totalSec) * 100) + '%';
+      const i = Math.floor((s - LEAD) / SEG);
+      if (s < LEAD) $('bigVowel').textContent = 'Prepare-se…';
+      else if (i < V.length) $('bigVowel').textContent = VOWEL_HINT[V[i]];
+      else $('bigVowel').textContent = 'Pronto!';
+      spans.forEach((sp, k) => { sp.className = k < i ? 'ok' : k === i ? 'now' : ''; });
+      if (s >= totalSec && mr.state === 'recording') mr.stop();
+      raf = requestAnimationFrame(tick);
+    };
+    mr.onstart = () => { t0 = performance.now(); };
+    mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    mr.onstop = async () => {
+      cancelAnimationFrame(raf);
+      stream.getTracks().forEach((t) => t.stop());
+      const cancelled = cloneRec.cancelled;
+      cloneRec = null;
+      $('btnClone').disabled = false;
+      $('cloneWizard').classList.add('hidden');
+      if (cancelled) return;
+      $('cloneStatus').textContent = '⏳ Analisando o timbre da sua voz…';
+      try {
+        const buf = await audioCtx().decodeAudioData(await new Blob(chunks, { type: mr.mimeType || 'audio/webm' }).arrayBuffer());
+        await useCloneRecording(buf);
+      } catch (e) {
+        console.error(e);
+        $('cloneStatus').textContent = '⚠️ ' + (e.message || 'Não deu certo.') + ' Tente de novo, cantando cada vogal sem parar e um pouco mais alto.';
+      }
+    };
+    mr.start();
+    tick();
+  }
+
+  async function useCloneRecording(buffer) {
+    const p = await VoiceClone.profileFromGuidedRecording(buffer);
+    try { await VoiceClone.saveProfile(p); } catch (e) { console.warn('não foi possível salvar', e); }
+    state.cloneProfile = p;
+    updateCloneUI();
+    $('singerSel').value = 'clone';
+    playDemo();
+    return p;
+  }
+
+  function playDemo() {
+    try {
+      const buf = VoiceClone.demo(singerProfile());
+      const ctx = audioCtx();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start();
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   function switchTab(tab) {
@@ -134,7 +250,6 @@
       $('meterBar').style.width = Math.min(100, Math.sqrt(e / data.length) * 400) + '%';
       const s = (performance.now() - t0) / 1000;
       $('recTime').textContent = fmt(s);
-      if (s >= 30) mr.stop();
       raf = requestAnimationFrame(tick);
     };
     mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
@@ -168,13 +283,7 @@
       $('recPreview').classList.remove('hidden');
       const ctx = audioCtx();
       const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
-      // limita a 30 s
-      let voice = buf;
-      if (buf.duration > 30.5) {
-        voice = new AudioBuffer({ numberOfChannels: buf.numberOfChannels, length: Math.floor(30 * buf.sampleRate), sampleRate: buf.sampleRate });
-        for (let c = 0; c < buf.numberOfChannels; c++) voice.copyToChannel(buf.getChannelData(c).subarray(0, voice.length), c);
-      }
-      await setVoice(voice);
+      await setVoice(buf); // sem limite de duração
     } catch (e) {
       console.error(e);
       setStatus('Não consegui ler esse áudio. Tente outro arquivo (mp3, wav, m4a, ogg).', true);
@@ -212,6 +321,7 @@
       mode: $('modeSel').value,
       bpm: bpmV >= 50 ? bpmV : null,
       length: $('lenSel').value,
+      minutes: parseFloat(String($('minutesIn').value).replace(',', '.')) || 3,
       variation: state.variation,
     };
     let song;
@@ -238,10 +348,26 @@
     await new Promise((r) => setTimeout(r, 30));
     try {
       const voiceBuffer = state.tab === 'voz' && $('includeVoice').checked ? state.voiceBuffer : null;
+      let vocalBuffer = null;
+      song.singer = null;
+      if (state.tab === 'texto' && $('singOn').checked) {
+        setStatus('Ensinando a voz a cantar a letra… 🎙️');
+        await new Promise((r) => setTimeout(r, 30));
+        const profile = singerProfile();
+        const sung = VoiceClone.songToSinging(song, profile);
+        if (sung.length) {
+          const totalSec = Synth.stepToTime(song, song.totalBars * 16) + 3;
+          vocalBuffer = VoiceClone.renderSinging(sung, profile, totalSec);
+          song.singer = profile.name;
+        }
+      }
+      state.gains.melody = vocalBuffer ? 0.3 : 0.9;
       const render = await Synth.render(song, {
         voiceBuffer,
+        vocalBuffer,
         onProgress: (p) => setStatus('Compondo e tocando os instrumentos… ' + Math.round(p * 100) + '% 🎼'),
       });
+      render.hasVoice = !!(voiceBuffer || vocalBuffer);
       state.song = song;
       state.render = render;
       state.offset = 0;
@@ -266,17 +392,18 @@
       '🎼 ' + MT.keyName(s.key, s.mode),
       '⏱ ' + s.bpm + ' bpm',
       '⌛ ' + fmt(state.render.duration),
-    ].concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
+    ].concat(s.singer ? ['🎙️ ' + s.singer] : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
     $('songTags').innerHTML = '';
     tags.forEach((t) => { const e = document.createElement('span'); e.className = 'tag'; e.textContent = t; $('songTags').appendChild(e); });
 
     const mix = $('mixer');
     mix.innerHTML = '';
     Synth.STEMS.forEach((name) => {
-      if (name === 'voice' && !(s.source === 'voz' && $('includeVoice').checked)) return;
+      if (name === 'voice' && !state.render.hasVoice) return;
       const wrap = document.createElement('div');
       const lab = document.createElement('label');
-      lab.innerHTML = '<span><span class="dot" style="background:' + STEM_INFO[name].color + '"></span>' + STEM_INFO[name].label + '</span><span class="muted">' + Math.round(state.gains[name] * 100) + '%</span>';
+      const label = name === 'voice' && s.singer ? 'Voz cantando' : STEM_INFO[name].label;
+      lab.innerHTML = '<span><span class="dot" style="background:' + STEM_INFO[name].color + '"></span>' + label + '</span><span class="muted">' + Math.round(state.gains[name] * 100) + '%</span>';
       const r = document.createElement('input');
       r.type = 'range'; r.min = 0; r.max = 150; r.value = Math.round(state.gains[name] * 100);
       r.setAttribute('aria-label', 'Volume ' + STEM_INFO[name].label);
@@ -304,7 +431,7 @@
     const out = ctx.createGain(); out.gain.value = 0.9;
     master.connect(out).connect(ctx.destination);
     const when = ctx.currentTime + 0.05;
-    const voiceOn = state.song.source === 'voz' && $('includeVoice').checked;
+    const voiceOn = state.render.hasVoice;
     state.gainNodes = {};
     state.sources = Synth.STEMS.filter((n) => n !== 'voice' || voiceOn).map((name) => {
       const src = ctx.createBufferSource();
@@ -470,7 +597,7 @@
 
   function downloadWav() {
     if (!state.render) return;
-    const voiceOn = state.song.source === 'voz' && $('includeVoice').checked;
+    const voiceOn = state.render.hasVoice;
     const gains = Object.assign({}, state.gains);
     if (!voiceOn) gains.voice = 0;
     const blob = Exporter.toWav(Exporter.mixStems(state.render.stems, gains));
@@ -478,6 +605,6 @@
   }
 
   // acesso para testes automatizados
-  window.App = { state, generate, setVoice, switchTab };
+  window.App = { state, generate, setVoice, switchTab, useCloneRecording, singerProfile };
   init();
 })();
