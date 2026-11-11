@@ -130,14 +130,19 @@ canvas#roll { display: block; width: 100%; height: 260px; cursor: pointer; }
 .mixer { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 4px 16px; margin: 16px 0; }
 .mixer label { margin: 6px 0 0; font-size: .85rem; display: flex; justify-content: space-between; }
 .mixer .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-.downloads { display: flex; gap: 10px; flex-wrap: wrap; }
+.downloads { border-top: 1px solid var(--line); padding-top: 6px; }
+.dl-label { margin-top: 8px; }
+.dl-row { display: flex; gap: 10px; }
+.dl-row select { flex: 1; min-width: 0; }
+.dl-row .btn { flex: none; }
 
 footer { text-align: center; padding: 10px 16px 30px; font-size: .85rem; }
 
 @media (max-width: 560px) {
   .card { padding: 16px; }
   h1 { font-size: 1.3rem; }
-  .downloads .btn { flex: 1; justify-content: center; }
+  .dl-row { flex-direction: column; }
+  .dl-row .btn { justify-content: center; }
   .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .chip { white-space: nowrap; flex: none; }
 }

@@ -23,7 +23,17 @@ Tudo roda **no navegador**, sem servidor, sem cadastro e sem chave de API. Nenhu
 3. (Opcional) Em **🎙️ Voz cantando a letra**, clique em **Clonar minha voz** e cante cada vogal quando ela aparecer na tela. Depois escolha "Minha voz clonada" em *Quem canta*.
 4. (Opcional) Abra **Ajustes** para fixar estilo, tom, modo (maior/menor), andamento e duração (*Livre*, curta, média, longa ou *Escolher minutos…*).
 5. Clique em **Gerar música**. Use **Outra versão** para variar a composição.
-6. Ajuste o volume de cada parte no mixer e baixe em **WAV** (áudio) ou **MIDI** (partitura, para abrir em programas como GarageBand, FL Studio, MuseScore).
+6. Ajuste o volume de cada parte no mixer e escolha o formato em **Baixar como**:
+
+| Formato | Para quê |
+|---|---|
+| **MP3** 320 / 192 / 128 kbps | Ouvir no celular, enviar no WhatsApp, postar (192 kbps é o recomendado) |
+| **FLAC** | Qualidade idêntica ao WAV (sem perdas), com cerca de 40% do tamanho |
+| **WAV** 16 bits / 24 bits | Qualidade de CD / de estúdio, para edição |
+| **ZIP com faixas separadas** | Mix completo + bateria, baixo, harmonia, melodia e voz em arquivos separados + MIDI, para remixar em programas de produção |
+| **MIDI** | Partitura/notas para GarageBand, FL Studio, MuseScore etc. |
+
+Toda a conversão é feita no próprio navegador.
 
 ## Estilos disponíveis
 
@@ -51,7 +61,9 @@ Se nenhum estilo for citado, o app sugere um a partir do clima.
 | `js/pitch.js` | Detecta a altura da voz (algoritmo YIN) e segmenta em notas |
 | `js/voice.js` | Clonagem de voz (marcas de pitch por vogal), canto por TD-PSOLA com consoantes do português, vozes sintéticas e armazenamento local (IndexedDB) |
 | `js/synth.js` | Sintetizador com Web Audio API: ~25 instrumentos e bateria gerados por síntese, reverb, mixagem por faixas |
-| `js/export.js` | Exporta WAV e MIDI |
+| `js/export.js` | Mixagem final e exportação MIDI |
+| `js/formats.js` | Codificadores de MP3 (via lamejs), FLAC (codificador próprio), WAV 16/24 bits e ZIP |
+| `js/vendor/lame.min.js` | [lamejs](https://github.com/zhuker/lamejs) — codificador MP3 (licença LGPL, ver `LAME-LICENSE.txt`) |
 | `js/app.js` | Interface, gravação, reprodução, mixer e visualização (piano roll) |
 
 A composição é determinística: o mesmo texto gera a mesma música; "Outra versão" muda a semente.

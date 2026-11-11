@@ -75,10 +75,8 @@
       const r = e.target.getBoundingClientRect();
       seekTo(((e.clientX - r.left) / r.width) * state.render.duration);
     };
-    $('btnWav').onclick = downloadWav;
-    $('btnMidi').onclick = () => {
-      if (state.song) Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
-    };
+    $('btnDownload').onclick = downloadSelected;
+    $('fmtSel').onchange = updateSizeHint;
     window.addEventListener('resize', drawRoll);
     $('lenSel').onchange = () => $('minutesWrap').classList.toggle('hidden', $('lenSel').value !== 'custom');
     $('btnClone').onclick = startClone;
@@ -417,6 +415,8 @@
     });
     drawRoll();
     updateTime();
+    updateSizeHint();
+    $('dlStatus').textContent = '';
     $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -595,13 +595,74 @@
     return base + '-' + state.song.style.id + '.' + ext;
   }
 
-  function downloadWav() {
-    if (!state.render) return;
-    const voiceOn = state.render.hasVoice;
+  function currentGains() {
     const gains = Object.assign({}, state.gains);
-    if (!voiceOn) gains.voice = 0;
-    const blob = Exporter.toWav(Exporter.mixStems(state.render.stems, gains));
-    Exporter.download(blob, fileName('wav'));
+    if (!state.render.hasVoice) gains.voice = 0;
+    return gains;
+  }
+
+  function fmtBytes(b) {
+    return b > 1e6 ? (b / 1e6).toFixed(b > 1e7 ? 0 : 1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
+  }
+
+  function updateSizeHint() {
+    if (!state.render) return;
+    const f = $('fmtSel').value;
+    const est = f === 'midi' ? 0 : Formats.estimateSize(f, state.render.duration, state.render.sampleRate || 44100);
+    $('fmtSize').textContent = est ? '(≈ ' + fmtBytes(est) + ')' : '';
+  }
+
+  const STEM_FILE = { drums: '1-bateria', bass: '2-baixo', harmony: '3-harmonia', melody: '4-melodia', voice: '5-voz' };
+
+  async function downloadSelected() {
+    if (!state.render || !state.song) return;
+    const f = $('fmtSel').value;
+    const btn = $('btnDownload');
+    const status = (t) => { $('dlStatus').textContent = t; };
+    btn.disabled = true;
+    try {
+      if (f === 'midi') {
+        Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
+        status('');
+        return;
+      }
+      status('Mixando…');
+      await new Promise((r) => setTimeout(r, 20));
+      const mix = Exporter.mixStems(state.render.stems, currentGains());
+      let blob, ext;
+      const prog = (label) => (p) => status(label + ' ' + Math.round(p * 100) + '%');
+      if (f.startsWith('mp3')) {
+        blob = await Formats.mp3(mix, parseInt(f.split('-')[1], 10), prog('Convertendo para MP3…'));
+        ext = 'mp3';
+      } else if (f === 'flac') {
+        blob = await Formats.flac(mix, prog('Convertendo para FLAC…'));
+        ext = 'flac';
+      } else if (f === 'wav16' || f === 'wav24') {
+        blob = Formats.wav(mix, f === 'wav24' ? 24 : 16);
+        ext = 'wav';
+      } else if (f === 'zip') {
+        const files = [{ name: '0-mix-completo.wav', blob: Formats.wav(mix, 16) }];
+        for (const name of Synth.STEMS) {
+          if (name === 'voice' && !state.render.hasVoice) continue;
+          status('Preparando faixa: ' + STEM_INFO[name].label + '…');
+          await new Promise((r) => setTimeout(r, 10));
+          const st = state.render.stems[name];
+          const one = { L: st.getChannelData(0), R: st.getChannelData(1), sr: st.sampleRate };
+          files.push({ name: STEM_FILE[name] + '.wav', blob: Formats.wav(one, 16) });
+        }
+        files.push({ name: '6-partitura.mid', blob: Exporter.toMidi(state.song) });
+        status('Compactando ZIP…');
+        blob = await Formats.zip(files);
+        ext = 'zip';
+      }
+      Exporter.download(blob, fileName(ext));
+      status('✅ Pronto: ' + fileName(ext) + ' (' + fmtBytes(blob.size) + ')');
+    } catch (e) {
+      console.error(e);
+      status('⚠️ Erro ao converter: ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   // acesso para testes automatizados

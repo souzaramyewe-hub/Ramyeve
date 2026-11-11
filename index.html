@@ -144,8 +144,27 @@
       <div class="mixer" id="mixer"></div>
 
       <div class="downloads">
-        <button id="btnWav" class="btn">⬇️ Baixar áudio (WAV)</button>
-        <button id="btnMidi" class="btn ghost">⬇️ Baixar partitura (MIDI)</button>
+        <label for="fmtSel" class="dl-label">Baixar como <span id="fmtSize" class="muted"></span></label>
+        <div class="dl-row">
+          <select id="fmtSel">
+            <optgroup label="Áudio compactado">
+              <option value="mp3-320">MP3 · 320 kbps (alta qualidade)</option>
+              <option value="mp3-192" selected>MP3 · 192 kbps (recomendado)</option>
+              <option value="mp3-128">MP3 · 128 kbps (arquivo menor)</option>
+            </optgroup>
+            <optgroup label="Áudio sem perdas">
+              <option value="flac">FLAC (sem perdas, menor que WAV)</option>
+              <option value="wav16">WAV · 16 bits (qualidade de CD)</option>
+              <option value="wav24">WAV · 24 bits (estúdio)</option>
+            </optgroup>
+            <optgroup label="Para produtores">
+              <option value="zip">ZIP · faixas separadas (bateria, baixo, voz…) + MIDI</option>
+              <option value="midi">MIDI · partitura / notas</option>
+            </optgroup>
+          </select>
+          <button id="btnDownload" class="btn">⬇️ Baixar</button>
+        </div>
+        <div id="dlStatus" class="muted small"></div>
       </div>
     </section>
   </main>
@@ -160,6 +179,8 @@
   <script src="js/synth.js"></script>
   <script src="js/voice.js"></script>
   <script src="js/export.js"></script>
+  <script src="js/vendor/lame.min.js"></script>
+  <script src="js/formats.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
