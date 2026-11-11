@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ramyeve Música</title>
+  <meta name="description" content="Crie músicas de qualquer estilo a partir de um texto ou de um trecho cantado.">
+  <meta name="theme-color" content="#14111f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🎵</span>
+      <div>
+        <h1>Ramyeve Música</h1>
+        <p>Crie uma música de qualquer estilo a partir de um texto ou cantando um trecho.</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="texto">✍️ Por texto</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="voz">🎤 Pela voz</button>
+      </div>
+
+      <div class="panel" id="panel-texto">
+        <label for="prompt">Descreva a música</label>
+        <textarea id="prompt" rows="3" placeholder="Ex.: um samba alegre sobre o verão no Rio, com flauta, 100 bpm"></textarea>
+        <div class="chips" id="examples"></div>
+
+        <label for="lyrics">Letra <span class="muted">(opcional — o ritmo da melodia segue as sílabas; deixe uma linha em branco entre verso e refrão)</span></label>
+        <textarea id="lyrics" rows="5" placeholder="Olha o sol nascendo lá no mar&#10;Vem comigo, vem dançar&#10;&#10;É verão, é verão no meu coração&#10;Batucando sem parar"></textarea>
+      </div>
+
+      <div class="panel hidden" id="panel-voz">
+        <p class="muted">Cante, cantarole ou assobie um trecho de melodia (até 30 s) — ou envie um áudio. O app detecta as notas, o tom e o andamento e cria o arranjo no estilo que você escolher.</p>
+        <div class="rec-row">
+          <button id="btnRec" class="btn rec">● Gravar</button>
+          <label class="btn ghost file">📁 Enviar áudio<input type="file" id="fileIn" accept="audio/*" hidden></label>
+          <span id="recTime" class="muted">00:00</span>
+          <div class="meter"><div id="meterBar"></div></div>
+        </div>
+        <audio id="recPreview" controls class="hidden"></audio>
+        <div id="voiceInfo" class="voice-info hidden"></div>
+
+        <label for="voicePrompt">Estilo desejado <span class="muted">(em texto, ou escolha na lista abaixo)</span></label>
+        <textarea id="voicePrompt" rows="2" placeholder="Ex.: forró animado com sanfona"></textarea>
+        <label class="check"><input type="checkbox" id="includeVoice" checked> Incluir minha voz na música</label>
+      </div>
+
+      <details class="adv">
+        <summary>Ajustes</summary>
+        <div class="grid">
+          <label>Estilo
+            <select id="styleSel"><option value="auto">Automático (pelo texto)</option></select>
+          </label>
+          <label>Tom
+            <select id="keySel"><option value="auto">Automático</option></select>
+          </label>
+          <label>Modo
+            <select id="modeSel">
+              <option value="auto">Automático</option>
+              <option value="major">Maior (alegre)</option>
+              <option value="minor">Menor (melancólico)</option>
+            </select>
+          </label>
+          <label>Duração
+            <select id="lenSel">
+              <option value="curta">Curta (~20 s)</option>
+              <option value="media" selected>Média (~1 min)</option>
+              <option value="longa">Longa (~1,5 min)</option>
+            </select>
+          </label>
+          <label>Andamento: <b id="bpmLabel">automático</b>
+            <input type="range" id="bpmIn" min="0" max="200" step="1" value="0">
+          </label>
+        </div>
+      </details>
+
+      <button id="btnGen" class="btn primary big">🎶 Gerar música</button>
+      <div id="status" class="status" role="status"></div>
+    </section>
+
+    <section class="card hidden" id="result">
+      <div class="result-head">
+        <div>
+          <h2 id="songTitle">—</h2>
+          <div class="tags" id="songTags"></div>
+        </div>
+        <button id="btnAgain" class="btn ghost">🔀 Outra versão</button>
+      </div>
+
+      <div class="roll-wrap">
+        <canvas id="roll" height="260"></canvas>
+      </div>
+
+      <div class="transport">
+        <button id="btnPlay" class="btn primary round" aria-label="Tocar">▶</button>
+        <button id="btnStop" class="btn ghost round" aria-label="Parar">■</button>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Posição">
+        <span id="timeLabel" class="muted mono">0:00 / 0:00</span>
+      </div>
+
+      <div class="mixer" id="mixer"></div>
+
+      <div class="downloads">
+        <button id="btnWav" class="btn">⬇️ Baixar áudio (WAV)</button>
+        <button id="btnMidi" class="btn ghost">⬇️ Baixar partitura (MIDI)</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="muted">Tudo é gerado no seu navegador — nenhum áudio sai do seu aparelho.</footer>
+
+  <script src="js/theory.js"></script>
+  <script src="js/styles.js"></script>
+  <script src="js/textAnalyzer.js"></script>
+  <script src="js/composer.js"></script>
+  <script src="js/pitch.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

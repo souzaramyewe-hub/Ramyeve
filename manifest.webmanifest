@@ -1,0 +1,17 @@
+{
+  "name": "Ramyeve Música",
+  "short_name": "Ramyeve",
+  "description": "Crie músicas de qualquer estilo a partir de um texto ou de um trecho cantado.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#14111f",
+  "theme_color": "#14111f",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c5cff'/><text x='50' y='70' font-size='60' text-anchor='middle'>🎵</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
