@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Como instalar o Linux Mint</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 16px; line-height: 1.6; color: #222; background: #fff; }
+  h1 { font-size: 1.6em; }
+  h2 { font-size: 1.2em; margin-top: 1.8em; background: #e8f3e8; padding: 8px 12px; border-radius: 6px; }
+  li { margin-bottom: 6px; }
+  .aviso { background: #fff3cd; border-left: 5px solid #e0a800; padding: 10px 14px; margin: 14px 0; }
+  a { color: #0b5ed7; font-weight: bold; }
+  .caixa { border: 1px solid #ccc; border-radius: 6px; padding: 10px 14px; margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<h1>Como instalar o Linux Mint em outro computador</h1>
+
+<div class="caixa">
+  <strong>Links para baixar (salve os dois no SSD externo):</strong>
+  <ul>
+    <li><a href="https://www.linuxmint.com/download.php">Linux Mint</a> – escolha a edição <strong>Xfce</strong> e depois um servidor do <strong>Brazil</strong>. O arquivo termina em <code>.iso</code> e tem cerca de 3 GB.</li>
+    <li><a href="https://rufus.ie/pt_BR/">Rufus</a> – escolha a versão <strong>Portable</strong>.</li>
+  </ul>
+</div>
+
+<h2>O que você precisa</h2>
+<ul>
+  <li>O SSD externo, para guardar os dois downloads.</li>
+  <li>Um pen drive de 8 GB ou mais. <strong>Ele será apagado.</strong></li>
+  <li>O outro computador, onde o Linux vai ser instalado.</li>
+</ul>
+
+<h2>Parte 1 – Baixar no SSD externo</h2>
+<ol>
+  <li>Conecte o SSD e veja a letra dele em "Este Computador" (por exemplo, E:).</li>
+  <li>Clique nos dois links acima e baixe os arquivos.</li>
+  <li>Quando o navegador perguntar onde salvar, escolha o SSD externo.</li>
+  <li>Se ele salvar sozinho em Downloads: aperte <strong>Ctrl+J</strong>, clique em "Mostrar na pasta" e arraste o arquivo para o SSD.</li>
+</ol>
+
+<h2>Parte 2 – Gravar o pen drive</h2>
+<ol>
+  <li>Conecte o pen drive.</li>
+  <li>Abra o Rufus que está no SSD (dois cliques).</li>
+  <li>Em <strong>Dispositivo</strong>, escolha o pen drive. Confira a letra para não escolher o SSD.</li>
+  <li>Clique em <strong>Selecionar</strong> e escolha o arquivo <code>.iso</code> no SSD.</li>
+  <li>Clique em <strong>Iniciar</strong> e aceite as opções padrão.</li>
+  <li>Espere terminar (5 a 15 minutos) e feche o Rufus.</li>
+</ol>
+
+<h2>Parte 3 – Instalar no outro computador</h2>
+
+<div class="aviso">
+  <strong>Atenção:</strong> a instalação apaga tudo do outro computador, inclusive o Windows e os arquivos. Copie antes o que for importante.
+</div>
+
+<ol>
+  <li>Com o computador desligado, conecte o pen drive.</li>
+  <li>Ligue e fique apertando a tecla do menu de boot (veja a tabela abaixo).</li>
+  <li>Escolha o pen drive na lista.</li>
+  <li>Na tela preta do Linux Mint, aperte Enter na primeira opção. Abre uma área de trabalho sem instalar nada.</li>
+  <li>Teste a internet e o som.</li>
+  <li>Se estiver tudo certo, dê dois cliques em <strong>Install Linux Mint</strong>.</li>
+  <li>Idioma: <strong>Português do Brasil</strong>.</li>
+  <li>Teclado: <strong>Português (Brasil)</strong>.</li>
+  <li>Marque a opção de instalar codecs multimídia.</li>
+  <li>Tipo de instalação: <strong>Apagar o disco e instalar o Linux Mint</strong>.</li>
+  <li>Fuso horário: clique na sua cidade no mapa (por exemplo, Fortaleza).</li>
+  <li>Crie seu nome de usuário e uma senha. <strong>Anote a senha.</strong></li>
+  <li>Espere de 15 a 30 minutos.</li>
+  <li>Clique em <strong>Reiniciar agora</strong> e tire o pen drive quando ele pedir.</li>
+</ol>
+
+<h2>Tecla do menu de boot por marca</h2>
+<ul>
+  <li><strong>Dell:</strong> F12</li>
+  <li><strong>HP:</strong> Esc ou F9</li>
+  <li><strong>Lenovo:</strong> F12 (ou o botãozinho Novo na lateral)</li>
+  <li><strong>Acer:</strong> F12</li>
+  <li><strong>Asus:</strong> Esc ou F8</li>
+  <li><strong>Samsung:</strong> Esc ou F10</li>
+  <li><strong>Positivo:</strong> F12 ou F11</li>
+</ul>
+<p>Se nenhuma funcionar, tente F2 ou Del para entrar na configuração e procure a opção "Boot".</p>
+
+<h2>Depois de instalar</h2>
+<ul>
+  <li>O Linux já vem com o LibreOffice, que abre arquivos do Word e do Excel.</li>
+  <li>Gmail, Google Drive e Google Docs funcionam normalmente pelo navegador.</li>
+  <li>Quando aparecer o aviso de atualizações (escudo perto do relógio), clique e instale.</li>
+</ul>
+
+</body>
+</html>
