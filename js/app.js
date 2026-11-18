@@ -21,11 +21,11 @@
   const MOOD_PT = { triste: 'triste', alegre: 'alegre', calmo: 'calmo', energetico: 'energético', romantico: 'romântico', misterioso: 'misterioso', epico: 'épico' };
 
   const STEM_INFO = {
-    drums: { label: 'Bateria', color: '#ffb547' },
-    bass: { label: 'Baixo', color: '#3ccf91' },
-    harmony: { label: 'Harmonia', color: '#5ca8ff' },
-    melody: { label: 'Melodia', color: '#ff5c8a' },
-    voice: { label: 'Sua voz', color: '#b07cff' },
+    drums: { label: 'Bateria', color: '#f2a93b' },
+    bass: { label: 'Baixo', color: '#2bb39a' },
+    harmony: { label: 'Harmonia', color: '#4d8fe0' },
+    melody: { label: 'Melodia', color: '#e0492f' },
+    voice: { label: 'Sua voz', color: '#9b6bdf' },
   };
 
   const state = {
@@ -92,6 +92,21 @@
     $('btnClone').onclick = startClone;
     $('btnCancelClone').onclick = () => { if (cloneRec) { cloneRec.cancelled = true; cloneRec.mr.stop(); } };
     $('btnDemo').onclick = playDemo;
+    $('cloneFileIn').onchange = async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      $('cloneStatus').textContent = '⏳ Analisando o timbre da sua voz…';
+      try {
+        const buf = await audioCtx().decodeAudioData(await file.arrayBuffer());
+        const p = await VoiceClone.profileFromFreeRecording(buf);
+        await saveClone(p);
+        $('cloneUploadBox').open = false;
+      } catch (err) {
+        console.error(err);
+        $('cloneStatus').textContent = '⚠️ ' + (err.message || 'Não consegui ler esse áudio.') + ' Grave de novo seguindo os passos abaixo.';
+      }
+    };
     let delArmed = 0;
     $('btnDelClone').onclick = async () => {
       // confirmação na própria página: o 1º clique pede, o 2º apaga
@@ -193,7 +208,10 @@
   }
 
   async function useCloneRecording(buffer) {
-    const p = await VoiceClone.profileFromGuidedRecording(buffer);
+    return saveClone(await VoiceClone.profileFromGuidedRecording(buffer));
+  }
+
+  async function saveClone(p) {
     try { await VoiceClone.saveProfile(p); } catch (e) { console.warn('não foi possível salvar', e); }
     state.cloneProfile = p;
     updateCloneUI();
@@ -414,8 +432,8 @@
       '⏱ ' + s.bpm + ' bpm',
       '⌛ ' + fmt(state.render.duration),
     ].concat(s.singer ? ['🎙️ ' + s.singer] : [])
-      .concat(s.lyricsFit && s.lyricsFit.syllables !== s.lyricsFit.notes
-        ? ['📝 ' + s.lyricsFit.syllables + ' sílabas para ' + s.lyricsFit.notes + ' notas' + (s.lyricsFit.syllables < s.lyricsFit.notes ? ' (a letra se repete)' : ' (sobrou letra)')]
+      .concat(s.lyricsFit && s.lyricsFit.reps > 1
+        ? ['📝 sua melodia tocada ' + s.lyricsFit.reps + 'x para caber a letra inteira']
         : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
     $('songTags').innerHTML = '';
     tags.forEach((t) => { const e = document.createElement('span'); e.className = 'tag'; e.textContent = t; $('songTags').appendChild(e); });
@@ -692,6 +710,6 @@
   }
 
   // acesso para testes automatizados
-  window.App = { state, generate, setVoice, switchTab, useCloneRecording, singerProfile };
+  window.App = { state, generate, setVoice, switchTab, useCloneRecording, saveClone, singerProfile };
   init();
 })();

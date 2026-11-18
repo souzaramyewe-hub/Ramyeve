@@ -84,3 +84,18 @@ Para clonar melhor: ambiente silencioso, cante cada vogal **sem parar e na mesma
 - Cante perto do microfone, em ambiente silencioso e **sem música de fundo**.
 - Separe bem as notas (sílabas como "lá-lá-lá" funcionam melhor que um "uuuu" contínuo).
 - Trechos de 5 a 20 segundos dão os melhores resultados.
+
+## Projetos de referência
+
+Pesquisados no GitHub para orientar a evolução do app:
+
+| Projeto | O que é | Uso possível aqui |
+|---|---|---|
+| [ace-step/ACE-Step-1.5](https://github.com/ace-step/ACE-Step-1.5) (MIT) | Modelo aberto que gera músicas completas **com voz cantando a letra**, em vários idiomas | Modo "qualidade de IA": precisa de um computador com placa de vídeo ou de um servidor na nuvem |
+| [fspecii/ace-step-ui](https://github.com/fspecii/ace-step-ui) | Interface estilo Suno para o ACE-Step | Referência de interface |
+| [ASLP-lab/DiffRhythm](https://github.com/ASLP-lab/DiffRhythm) (Apache-2.0) | Geração de música completa (voz + instrumentos) a partir da letra | Alternativa ao ACE-Step |
+| [PlayVoice/whisper-vits-svc](https://github.com/PlayVoice/whisper-vits-svc) | Clonagem de voz cantada (conversão de voz) | Trocar a voz gerada pela voz da pessoa, com alguns minutos de gravação |
+| [openutau/OpenUtau](https://github.com/openutau/OpenUtau) (MIT) | Plataforma aberta de síntese de canto | Referência de fonética e expressão no canto |
+| [Tonejs/Tone.js](https://github.com/Tonejs/Tone.js) (MIT) e [danigb/soundfont-player](https://github.com/danigb/soundfont-player) (MIT) | Áudio na web e instrumentos com amostras reais | Trocar instrumentos sintetizados por gravações reais (piano, violão, bateria) |
+| [magenta/magenta-js](https://github.com/magenta/magenta-js) (Apache-2.0) | Modelos de música que rodam no navegador | Gerar baterias e melodias mais variadas |
+

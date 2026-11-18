@@ -334,27 +334,51 @@
     o.start(t); o.stop(t + decay + 0.02);
   }
 
+  /* prato metálico estilo 808: seis osciladores quadrados em razões inarmônicas */
+  const METAL = [205.3, 304.4, 369.6, 522.7, 540, 800];
+  function metal(ctx, out, t, decay, gain, hp) {
+    const sum = ctx.createGain(); sum.gain.value = 0.18;
+    for (const f of METAL) { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f * 1.7; o.connect(sum); o.start(t); o.stop(t + decay + 0.05); }
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 10000; bp.Q.value = 0.8;
+    const h = ctx.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp || 7000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + decay);
+    sum.connect(bp).connect(h).connect(g).connect(out);
+  }
+
   const DRUM = {
     kick(ctx, out, t, v, sh, style) {
-      if (style.bass === '808') toneHit(ctx, out, t, 160, 50, 0.04, 0.3, v * 0.9);
-      else toneHit(ctx, out, t, 150, 45, 0.08, 0.45, v * 0.95);
-      noiseHit(ctx, out, sh, t, 'highpass', 3000, 0.7, 0.012, v * 0.25);
+      if (style.bass === '808') toneHit(ctx, out, t, 160, 48, 0.05, 0.35, v * 0.95);
+      else {
+        toneHit(ctx, out, t, 170, 50, 0.07, 0.42, v * 0.95);
+        toneHit(ctx, out, t, 60, 52, 0.2, 0.3, v * 0.35); // corpo
+      }
+      toneHit(ctx, out, t, 2200, 900, 0.008, 0.012, v * 0.18, 'triangle'); // ataque do batedor
+      noiseHit(ctx, out, sh, t, 'highpass', 3000, 0.7, 0.01, v * 0.18);
     },
     snare(ctx, out, t, v, sh) {
-      toneHit(ctx, out, t, 240, 160, 0.05, 0.12, v * 0.35, 'triangle');
-      noiseHit(ctx, out, sh, t, 'highpass', 1500, 0.7, 0.18, v * 0.45);
+      toneHit(ctx, out, t, 330, 190, 0.04, 0.09, v * 0.3, 'triangle');
+      toneHit(ctx, out, t, 185, 160, 0.03, 0.12, v * 0.28);
+      noiseHit(ctx, out, sh, t, 'bandpass', 2400, 0.6, 0.22, v * 0.42);  // esteira
+      noiseHit(ctx, out, sh, t, 'highpass', 6000, 0.7, 0.08, v * 0.2);   // brilho
     },
     clap(ctx, out, t, v, sh) {
-      [0, 0.011, 0.022].forEach((d) => noiseHit(ctx, out, sh, t + d, 'bandpass', 1200, 1.2, 0.03, v * 0.5));
-      noiseHit(ctx, out, sh, t + 0.03, 'bandpass', 1200, 1, 0.2, v * 0.4);
+      [0, 0.009, 0.019, 0.028].forEach((d) => noiseHit(ctx, out, sh, t + d, 'bandpass', 1300, 1.4, 0.025, v * 0.45));
+      noiseHit(ctx, out, sh, t + 0.03, 'bandpass', 1200, 1, 0.22, v * 0.38);
     },
-    hat(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'highpass', 7500, 0.8, 0.045, v * 0.22); },
-    ohat(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'highpass', 7000, 0.8, 0.3, v * 0.18); },
+    hat(ctx, out, t, v) { metal(ctx, out, t, 0.05 + v * 0.02, v * 0.32); },
+    ohat(ctx, out, t, v) { metal(ctx, out, t, 0.32, v * 0.26); },
     ride(ctx, out, t, v, sh) {
-      noiseHit(ctx, out, sh, t, 'bandpass', 6500, 2, 0.5, v * 0.13);
-      toneHit(ctx, out, t, 3200, 3150, 0.3, 0.4, v * 0.03, 'square');
+      metal(ctx, out, t, 0.7, v * 0.12, 4000);
+      toneHit(ctx, out, t, 3200, 3150, 0.3, 0.45, v * 0.035, 'square');
+      noiseHit(ctx, out, sh, t, 'bandpass', 7000, 2, 0.4, v * 0.05);
     },
-    crash(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'highpass', 4500, 0.5, 1.6, v * 0.22); },
+    crash(ctx, out, t, v, sh) {
+      metal(ctx, out, t, 1.6, v * 0.16, 3500);
+      noiseHit(ctx, out, sh, t, 'highpass', 4500, 0.5, 1.8, v * 0.2);
+    },
     rim(ctx, out, t, v) { toneHit(ctx, out, t, 1700, 1500, 0.02, 0.04, v * 0.3, 'square'); },
     shaker(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'bandpass', 9000, 1.5, 0.05, v * 0.14); },
     perc(ctx, out, t, v, sh, style) {
@@ -437,14 +461,27 @@
   }
 
   /* Lista todos os eventos sonoros com tempo absoluto. */
+  const LAID_BACK = { lofi: 0.012, trap: 0.006, reggae: 0.01, blues: 0.008, jazz: 0.006, gospel: 0.008, balada: 0.006, bossa: 0.004 };
+
   function collectEvents(song) {
     const stepDur = 60 / song.bpm / 4;
     const ev = [];
     for (const d of song.parts.drums) {
       const fn = DRUM[d.lane];
       if (!fn) continue;
-      const t = Math.max(0, stepToTime(song, d.step) + (Math.random() - 0.5) * 0.004);
-      const vel = d.vel * (0.92 + Math.random() * 0.08);
+      // Groove humano: caixa um pouco atrás do tempo nos estilos com balanço,
+      // pratos com dinâmica variada (mais fortes nos tempos, mais leves nos contratempos).
+      const laid = LAID_BACK[song.style.id] || 0;
+      let off = (Math.random() - 0.5) * 0.006;
+      if (d.lane === 'snare' || d.lane === 'clap') off += laid;
+      if (d.lane === 'hat' || d.lane === 'shaker') off += (Math.random() - 0.5) * 0.004;
+      const t = Math.max(0, stepToTime(song, d.step) + off);
+      let vel = d.vel;
+      if (d.lane === 'hat' || d.lane === 'shaker' || d.lane === 'ride') {
+        const pos = Math.round(d.step) % 4;
+        vel *= pos === 0 ? 1 : pos === 2 ? 0.78 : 0.62;
+        vel *= 0.8 + Math.random() * 0.2;
+      } else vel *= 0.9 + Math.random() * 0.1;
       ev.push({ t, end: t + (d.lane === 'crash' ? 1.7 : 0.6), play: (ctx, B, tt) => fn(ctx, B.out('d_' + d.lane, 'drums', 1, DRUM_PANS[d.lane] || 0), tt, vel, B.sh, song.style) });
     }
     const part = (notes, instName, bus, gain, pan, key) => {
@@ -525,7 +562,7 @@
     if (opts.voiceBuffer && song.voiceStartSec != null) {
       longSources.push({ buffer: opts.voiceBuffer, when: song.voiceStartSec - song.voiceOffsetSec, gain: 1.4, bus: 'voice', comp: true });
     }
-    if (opts.vocalBuffer) longSources.push({ buffer: opts.vocalBuffer, when: 0, gain: 1.6, bus: 'voice', comp: true });
+    if (opts.vocalBuffer) longSources.push({ buffer: opts.vocalBuffer, when: 0, gain: 1.6, bus: 'voice', comp: true, studio: true });
     const LCHUNK = 8;
     const longChunks = [];
     if (longSources.length || song.style.lofi) {
@@ -559,13 +596,15 @@
         n.start(0); n.stop(c1 - c0);
       }
       for (const ls of longSources) {
-        const startIn = ls.when - c0;                 // quando a fonte começa, relativo ao bloco
-        const srcOffset = Math.max(0, -startIn);      // quanto da fonte já passou
-        if (srcOffset >= ls.buffer.duration || startIn >= c1 - c0) continue;
-        const src = ctx.createBufferSource();
-        src.buffer = ls.buffer;
-        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90;
-        let node = src.connect(hp);
+        // cadeia: corte de graves, brilho, compressor; voz "de estúdio" ganha dobra e eco curto
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = ls.studio ? 110 : 90;
+        let node = hp;
+        if (ls.studio) {
+          const mud = ctx.createBiquadFilter(); mud.type = 'peaking'; mud.frequency.value = 300; mud.gain.value = -3; mud.Q.value = 1;
+          const pres = ctx.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 3200; pres.gain.value = 4; pres.Q.value = 0.8;
+          const air = ctx.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 9000; air.gain.value = 3;
+          node = node.connect(mud).connect(pres).connect(air);
+        }
         if (ls.comp) {
           const comp = ctx.createDynamicsCompressor();
           comp.threshold.value = -24; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.15;
@@ -573,7 +612,30 @@
         }
         const g = ctx.createGain(); g.gain.value = ls.gain;
         node.connect(g).connect(B.buses[ls.bus]);
-        src.start(Math.max(0, startIn), srcOffset, Math.max(0.001, (c1 - c0) - Math.max(0, startIn)));
+        if (ls.studio) {
+          const dl = ctx.createDelay(1); dl.delayTime.value = 0.13;
+          const dg = ctx.createGain(); dg.gain.value = 0.12;
+          g.connect(dl).connect(dg).connect(B.buses[ls.bus]);
+        }
+        const variants = [{ delay: 0, rate: 1, pan: 0, gain: 1 }];
+        if (ls.studio) variants.push({ delay: 0.017, rate: 1.0025, pan: -0.45, gain: 0.3 }, { delay: 0.026, rate: 0.9975, pan: 0.45, gain: 0.3 });
+        for (const vr of variants) {
+          const startIn = ls.when + vr.delay - c0;            // início relativo ao bloco
+          const srcOffset = Math.max(0, -startIn) * vr.rate;  // quanto da fonte já tocou
+          if (srcOffset >= ls.buffer.duration || startIn >= c1 - c0) continue;
+          const src = ctx.createBufferSource();
+          src.buffer = ls.buffer;
+          src.playbackRate.value = vr.rate;
+          let dest = hp;
+          if (vr.gain !== 1 || vr.pan) {
+            const vg = ctx.createGain(); vg.gain.value = vr.gain;
+            const pn = ctx.createStereoPanner(); pn.pan.value = vr.pan;
+            vg.connect(pn).connect(hp); // as cópias passam pelo mesmo tratamento
+            dest = vg;
+          }
+          src.connect(dest);
+          src.start(Math.max(0, startIn), srcOffset, Math.max(0.001, ((c1 - c0) - Math.max(0, startIn)) * vr.rate));
+        }
       }
       addInto(await ctx.startRendering(), Math.floor(c0 * SR));
       progress();

@@ -168,6 +168,44 @@
     return buildProfile(parts, { name: 'Minha voz', kind: 'clone' });
   }
 
+  /*
+   * Gravação livre (ex.: gravador do celular): a pessoa canta A, E, I, O, U
+   * em ordem, com uma pausa entre elas. Separamos as vogais pelos silêncios.
+   */
+  async function profileFromFreeRecording(buffer) {
+    const x = await toMono44(buffer);
+    const hop = Math.floor(0.02 * SR);
+    const env = [];
+    let peak = 0;
+    for (let s = 0; s + hop <= x.length; s += hop) { const r = rms(x, s, s + hop); env.push(r); if (r > peak) peak = r; }
+    if (peak < 0.005) throw new Error('O áudio está muito baixo ou em silêncio.');
+    const th = peak * 0.12;
+    // trechos com som, juntando falhas curtas (< 0,15 s)
+    const segs = [];
+    let a = -1, quiet = 0;
+    for (let i = 0; i <= env.length; i++) {
+      const on = i < env.length && env[i] > th;
+      if (on) { if (a < 0) a = i; quiet = 0; }
+      else if (a >= 0) {
+        quiet++;
+        if (quiet > 7 || i === env.length) { segs.push([a, i - quiet + 1]); a = -1; quiet = 0; }
+      }
+    }
+    const long = segs.filter(([s, e]) => (e - s) * hop / SR >= 0.4);
+    if (long.length < 5) {
+      throw new Error('Encontrei ' + long.length + ' vogal(is) no áudio, mas preciso das 5 (A, E, I, O, U), cada uma com pelo menos meio segundo e uma pausa entre elas.');
+    }
+    // se houver mais de 5 trechos, fica com os 5 mais longos, na ordem em que aparecem
+    const chosen = long.map((sg, i) => ({ sg, i, len: sg[1] - sg[0] }))
+      .sort((p, q) => q.len - p.len).slice(0, 5).sort((p, q) => p.i - q.i);
+    const parts = {};
+    VOWELS.forEach((v, k) => {
+      const [s, e] = chosen[k].sg;
+      parts[v] = x.slice(s * hop, Math.min(x.length, e * hop));
+    });
+    return buildProfile(parts, { name: 'Minha voz', kind: 'clone' });
+  }
+
   /* ================= Vozes sintéticas padrão ================= */
 
   const FORMANTS = {
@@ -181,24 +219,36 @@
   function synthVowelRecording(v, f0, fScale, sec) {
     const n = Math.floor(sec * SR);
     const x = new Float32Array(n);
-    let phase = 0;
+    let phase = 0, fCur = f0, aCur = 1, lp = 0;
+    const oq = 0.62;
     for (let i = 0; i < n; i++) {
-      const f = f0 * (1 + 0.004 * Math.sin(2 * Math.PI * 0.7 * i / SR)) * (1 + (Math.random() - 0.5) * 0.004);
-      phase += f / SR;
-      if (phase >= 1) phase -= 1;
-      const oq = 0.6;
-      let s = 0;
-      if (phase < oq) { const t = phase / oq; s = 2 * t - 3 * t * t; } // derivada do fluxo glotal
-      x[i] = s + (Math.random() - 0.5) * 0.03;
+      const drift = 0.006 * Math.sin(2 * Math.PI * 0.45 * i / SR) + 0.003 * Math.sin(2 * Math.PI * 1.3 * i / SR);
+      phase += fCur * (1 + drift) / SR;
+      if (phase >= 1) { // novo ciclo: jitter (frequência) e shimmer (volume)
+        phase -= 1;
+        fCur = f0 * (1 + (Math.random() - 0.5) * 0.014);
+        aCur = 1 + (Math.random() - 0.5) * 0.1;
+      }
+      let g = 0;
+      if (phase < oq) { const t = phase / oq; g = 2 * t - 3 * t * t; }       // derivada do fluxo glotal
+      else if (phase < oq + 0.05) g = -1 * (1 - (phase - oq) / 0.05);       // fechamento rápido
+      const asp = (Math.random() - 0.5) * (phase < oq ? 0.12 : 0.04);       // ar passando pela glote
+      lp += 0.35 * ((g * aCur + asp) - lp);                                 // inclinação espectral
+      x[i] = lp;
     }
+    const y = new Float32Array(n);
     for (const [ff, bw] of FORMANTS[v]) {
-      const F = ff * fScale, B = bw * fScale;
+      const F = ff * fScale, B = bw * fScale * 1.1;
       const C = -Math.exp(-2 * Math.PI * B / SR);
       const Bc = 2 * Math.exp(-Math.PI * B / SR) * Math.cos(2 * Math.PI * F / SR);
       const A = 1 - Bc - C;
       let y1 = 0, y2 = 0;
-      for (let i = 0; i < n; i++) { const y = A * x[i] + Bc * y1 + C * y2; y2 = y1; y1 = y; x[i] = y; }
+      for (let i = 0; i < n; i++) { const o = A * x[i] + Bc * y1 + C * y2; y2 = y1; y1 = o; x[i] = o; }
     }
+    // "formante do cantor" (brilho por volta de 3 kHz)
+    y.set(x);
+    makeFilter('bandpass', 3000 * fScale, 1.6)(y);
+    for (let i = 0; i < n; i++) x[i] += y[i] * 0.6;
     return x;
   }
 
@@ -374,25 +424,31 @@
    * Canta uma vogal (ou transição entre duas) em `out`, de `start` por `len` amostras.
    * f0At(i) -> Hz, mixAt(i) -> 0..1 (peso da segunda vogal), ampAt(i) -> ganho.
    */
-  function singVowel(out, start, len, profile, state, v1, v2, f0At, mixAt, ampAt) {
-    const A = profile.vowels[v1], B = v2 ? profile.vowels[v2] : null;
+  /*
+   * Canta uma vogal em `out`, de `start` por `len` amostras, com transição
+   * suave vinda da vogal anterior (v0, coarticulação) e indo para v2 (ditongo).
+   * f0At(i) -> Hz, mixAt(i) -> peso de v2, fromAt(i) -> peso de v0, ampAt(i) -> ganho.
+   */
+  function singVowel(out, start, len, profile, state, v1, v2, f0At, mixAt, ampAt, v0, fromAt) {
+    const V = profile.vowels;
+    const keys = [v0 && v0 !== v1 ? v0 : null, v1, v2 && v2 !== v1 ? v2 : null];
     let pos = 0;
     while (pos < len) {
       const f = f0At(pos);
       const T = SR / f;
       const amp = ampAt(pos);
-      const w = B ? mixAt(pos) : 0;
+      const w0 = keys[0] && fromAt ? fromAt(pos) : 0;
+      const w2 = keys[2] ? mixAt(pos) : 0;
+      const ws = [w0, Math.max(0, 1 - w0 - w2), w2];
       const c = start + Math.round(pos);
-      if (1 - w > 0.001) {
-        const P = (A.marks[state[v1].idx + 1] - A.marks[state[v1].idx - 1]) / 2;
-        addGrain(out, c, A, state[v1].idx, amp * (1 - w) * Math.min(2, T / P));
+      for (let k = 0; k < 3; k++) {
+        const key = keys[k];
+        if (!key || ws[k] <= 0.001) continue;
+        const vw = V[key], st = state[key];
+        const P = (vw.marks[st.idx + 1] - vw.marks[st.idx - 1]) / 2;
+        addGrain(out, c, vw, st.idx, amp * ws[k] * Math.min(2, T / P));
       }
-      if (B && w > 0.001) {
-        const P = (B.marks[state[v2].idx + 1] - B.marks[state[v2].idx - 1]) / 2;
-        addGrain(out, c, B, state[v2].idx, amp * w * Math.min(2, T / P));
-      }
-      advance(A, state[v1]);
-      if (B) advance(B, state[v2]);
+      for (const key of keys) if (key) advance(V[key], state[key]);
       pos += T;
     }
   }
@@ -460,7 +516,7 @@
       if (!raw) return null;
       return parseSyllable(raw, wordInitial, wordFinal);
     });
-    let prevMidi = null, prevEnd = -1;
+    let prevMidi = null, prevEnd = -1, prevVowel = null;
     for (let i = 0; i < notes.length; i++) {
       const n = notes[i];
       const ph = parsed[i] || { onset: n.vocalize ? ['l'] : [], v1: n.vowel || 'a', v2: null, coda: [] };
@@ -487,16 +543,22 @@
       ph.coda.forEach((c) => { codaLen += Math.floor((CONS[c] ? CONS[c].len : 0.04) * SR); });
       const vLen = Math.max(Math.floor(0.06 * SR), noteEnd - vStart - codaLen);
       const legato = prevMidi != null && (vStart - prevEnd) < 0.08 * SR;
-      const fromMidi = legato ? prevMidi : n.midi - 0.5;
-      const glide = Math.floor((legato ? 0.06 : 0.05) * SR);
+      const stressed = (n.vel || 0.9) >= 0.9;
+      const fromMidi = legato ? prevMidi : n.midi - (stressed ? 0.7 : 0.35);
+      const glide = Math.floor((legato ? 0.07 : 0.06) * SR);
       const durSec = vLen / SR;
+      // pequenas imperfeições humanas: desafinação leve, deriva lenta e vibrato próprio de cada nota
+      const detune = (Math.random() - 0.5) * 0.1;
+      const vibRate = 5 + Math.random() * 0.9, vibDepth = 0.2 + Math.random() * 0.12;
+      const vibStart = Math.min(0.3, durSec * 0.45);
+      const driftPh = Math.random() * 6.28;
       const f0At = (p) => {
         const t = p / SR;
-        let m = n.midi;
+        let m = n.midi + detune * Math.min(1, t / 0.15) + 0.05 * Math.sin(2 * Math.PI * 0.8 * t + driftPh);
         if (p < glide) m = fromMidi + (n.midi - fromMidi) * (0.5 - 0.5 * Math.cos(Math.PI * p / glide));
-        if (t > 0.25 && durSec > 0.4) {
-          const depth = Math.min(1, (t - 0.25) / 0.3) * 0.28;
-          m += depth * Math.sin(2 * Math.PI * 5.4 * t);
+        if (t > vibStart && durSec > 0.35) {
+          const depth = Math.min(1, (t - vibStart) / 0.25) * vibDepth;
+          m += depth * Math.sin(2 * Math.PI * vibRate * (t - vibStart));
         }
         return 440 * Math.pow(2, (m - 69) / 12);
       };
@@ -510,7 +572,20 @@
         const t = p / vLen;
         return ph.v2 ? Math.max(0, Math.min(1, (t - 0.55) / 0.3)) : 0;
       };
-      singVowel(out, vStart, vLen, profile, state, ph.v1, ph.v2, f0At, mixAt, ampAt);
+      // respiração antes de começar uma frase
+      if (!legato && vStart - Math.max(0, prevEnd) > 0.45 * SR) {
+        const bl = Math.floor(0.22 * SR);
+        const br = makeFilter('bandpass', 1600, 0.6)(noise(bl));
+        for (let k = 0; k < bl; k++) br[k] *= Math.sin(Math.PI * k / bl) * 0.6;
+        addInto(out, Math.max(0, cpos - bl - Math.floor(0.05 * SR)), br, 0.05);
+      }
+      const fromAt = legato && !ph.onset.length ? (p) => Math.max(0, 1 - p / (0.07 * SR)) : null;
+      singVowel(out, vStart, vLen, profile, state, ph.v1, ph.v2, f0At, mixAt, ampAt, prevVowel, fromAt);
+      // ar na voz (soprosidade), acompanhando o volume da nota
+      const air = makeFilter('bandpass', 3200, 0.5)(noise(vLen));
+      for (let k = 0; k < vLen; k++) air[k] *= ampAt(k);
+      addInto(out, vStart, air, 0.022);
+      prevVowel = ph.v2 || ph.v1;
       let cp = vStart + vLen;
       for (const c of ph.coda) {
         const l = Math.floor((CONS[c] ? CONS[c].len : 0.04) * SR);
@@ -519,6 +594,7 @@
       }
       prevMidi = n.midi;
       prevEnd = cp;
+      if (ph.coda.length) prevVowel = null;
     }
     // normaliza suavemente
     let peak = 0;
@@ -562,7 +638,7 @@
 
   global.VoiceClone = {
     VOWELS, SEG_SEC, LEAD_IN,
-    profileFromGuidedRecording, buildProfile, syntheticProfile,
+    profileFromGuidedRecording, profileFromFreeRecording, buildProfile, syntheticProfile,
     saveProfile, loadProfile, deleteProfile,
     renderSinging, songToSinging, demo, parseSyllable,
     _synthVowel: synthVowelRecording,

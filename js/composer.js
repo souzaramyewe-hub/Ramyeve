@@ -167,25 +167,45 @@
     return toNotes(onsets, total);
   }
 
-  function lyricRhythm(r, nSyl, bars) {
-    const total = bars * SPB;
-    const usable = total - 4;
-    let grid = 2;
-    if (nSyl > usable / 2) grid = 1;
-    const slots = [];
-    for (let s = 0; s < usable; s += grid) slots.push(s);
-    const n = Math.min(nSyl, slots.length);
-    const picked = new Set();
-    // distribui as sílabas com um leve ritmo "falado" (agrupadas no começo)
-    for (let i = 0; i < n; i++) {
-      const ideal = Math.pow(i / Math.max(1, n), 0.92) * slots.length;
-      let idx = Math.min(slots.length - 1, Math.round(ideal + (r() - 0.5) * 1.2));
-      while (picked.has(idx) && idx < slots.length - 1) idx++;
-      while (picked.has(idx) && idx > 0) idx--;
-      picked.add(idx);
+  /*
+   * Ritmo da letra pela prosódia: a última sílaba forte da frase cai num tempo
+   * forte do 2º compasso; as anteriores são colocadas de trás para frente,
+   * sílabas fortes mais longas (semínima) e fracas mais curtas (colcheia), e
+   * sílabas fortes sempre em colcheias "cheias". Sobra um respiro no fim.
+   */
+  function lyricRhythm(r, syls, bars) {
+    const total = bars * SPB, end = total - 3;
+    const n = syls.length;
+    const flags = global.TextAnalyzer.stressFlags(syls);
+    let last = flags.lastIndexOf(true);
+    if (last < 0) last = n - 1;
+    const post = n - 1 - last;
+    let landings = post >= 2 ? [16, 20, 12] : post === 1 ? [24, 20, 16] : [24, 20, 16, 28];
+    if (r.chance(0.3)) landings = [landings[1], landings[0]].concat(landings.slice(2));
+    const gapsList = [[4, 2], [3, 2], [2, 2], [2, 1], [1, 1]];
+    for (const [gs, gu] of gapsList) {
+      for (const L of landings) {
+        const steps = new Array(n);
+        steps[last] = L;
+        for (let i = last + 1; i < n; i++) steps[i] = steps[i - 1] + (gu === 1 && post > 3 ? 1 : 2);
+        if (steps[n - 1] > end - 1) continue;
+        let ok = true;
+        for (let i = last - 1; i >= 0; i--) {
+          let st = steps[i + 1] - (flags[i] ? gs : gu);
+          if (flags[i] && st % 2) st -= 1; // sílaba forte numa colcheia cheia
+          steps[i] = st;
+          if (st < 0) { ok = false; break; }
+        }
+        if (!ok) continue;
+        return steps.map((st, i) => {
+          const next = i + 1 < n ? steps[i + 1] : Math.max(st + 4, end);
+          return { step: st, dur: Math.max(1, Math.min(12, next - st)), stress: flags[i] || i === last };
+        });
+      }
     }
-    const onsets = Array.from(picked).sort((a, b) => a - b).map((i) => slots[i]);
-    return toNotes(onsets, total);
+    // muitas sílabas: distribui por igual em semicolcheias
+    const unit = Math.max(1, Math.floor(end / n));
+    return syls.map((_, i) => ({ step: i * unit, dur: i === n - 1 ? Math.max(2, end - i * unit) : unit, stress: flags[i] }));
   }
 
   function toNotes(onsets, total) {
@@ -206,7 +226,7 @@
       const isChordTone = (d) => [0, 2, 4].includes((((d - chord.deg) % 7) + 7) % 7);
       const progress = i / Math.max(1, total - 1);
       const dir = progress < 0.55 ? 1 : -1; // arco: sobe e depois desce
-      const strong = (n.step % 8 === 0) || n.dur >= 4 || i === total - 1;
+      const strong = n.stress != null ? (n.stress || i === total - 1) : ((n.step % 8 === 0) || n.dur >= 4 || i === total - 1);
       if (strong) {
         const cands = [];
         for (let d = lo; d <= hi; d++) if (isChordTone(d)) cands.push(d);
@@ -224,7 +244,7 @@
       }
       if (cur > hi) cur -= 2;
       if (cur < lo) cur += 2;
-      return { step: n.step, dur: n.dur, deg: cur };
+      return { step: n.step, dur: n.dur, deg: cur, stress: n.stress };
 
       function scoreTone(d) {
         const target = cur + dir * (r() < 0.5 ? 1 : 2);
@@ -456,7 +476,7 @@
       let rhythm, syls = null;
       if (lines && lines.length) {
         syls = lines[p % lines.length];
-        rhythm = lyricRhythm(rng(hash(syls.join('') + p)), syls.length, phraseBars);
+        rhythm = lyricRhythm(rng(hash(syls.join('') + p)), syls, phraseBars);
       } else {
         rhythm = (p % 4 === 2) ? motifB : motifA;
         if (p === phrases - 1) { // última frase: nota final longa
@@ -469,7 +489,7 @@
       notes.forEach((n, i) => {
         const step = p * phraseBars * SPB + n.step;
         if (step >= bars * SPB) return;
-        out.push({ step, dur: Math.min(n.dur, bars * SPB - step), deg: n.deg, syl: syls ? syls[i] : undefined, vel: n.step % 4 === 0 ? 0.9 : 0.75 });
+        out.push({ step, dur: Math.min(n.dur, bars * SPB - step), deg: n.deg, syl: syls ? syls[i] : undefined, vel: n.stress != null ? (n.stress ? 0.95 : 0.72) : (n.step % 4 === 0 ? 0.9 : 0.75) });
       });
       if (notes.length) prev = notes[notes.length - 1].deg;
     }
@@ -592,36 +612,39 @@
     });
 
     const introBars = 2;
-    // Melodias curtas ganham uma variação (repetição com arranjo); longas tocam uma vez.
-    const withVariation = melBars <= 16;
-    const plan = [['intro', introBars, chords.slice(-introBars)], ['melodia', melBars, chords]];
+    // Letra: as sílabas são encaixadas, em ordem, nas notas cantadas. Se a letra
+    // for maior que a melodia, a melodia se repete até a letra inteira ser cantada.
+    const syls = [].concat(...global.TextAnalyzer.lyricsToStanzas(o.lyrics || '').map((st) => [].concat(...st)));
+    const reps = syls.length ? Math.max(1, Math.ceil(syls.length / mel.length)) : 1;
+    const withVariation = !syls.length && melBars <= 16;
+    const plan = [['intro', introBars, chords.slice(-introBars)]];
+    for (let k = 0; k < reps; k++) plan.push(['melodia', melBars, chords]);
     if (withVariation) plan.push(['variacao', melBars, chords]);
     plan.push(['final', 2, [chords[chords.length - 1], buildChord(key, mode, 0, chordOpts(style))]]);
-    let bar = 0;
+    let bar = 0, firstMel = true;
     plan.forEach(([section, bars, chs], si) => {
       const nextSection = plan[si + 1] ? plan[si + 1][0] : null;
-      song.sections.push({ name: section, label: SECTION_PT[section], startBar: bar, bars });
+      const label = section === 'melodia' && !firstMel ? 'Repetição' : SECTION_PT[section];
+      song.sections.push({ name: section, label, startBar: bar, bars });
       addSectionParts(song, { style, r, chords: chs, startBar: bar, bars, section, nextSection });
       if (section === 'melodia' || section === 'variacao') {
         for (const n of mel) {
           song.parts.lead.push({ step: bar * SPB + n.step, dur: n.dur, midi: n.midi, vel: 0.85 });
         }
-        if (section === 'melodia') {
+        if (section === 'melodia' && firstMel) {
           song.voiceStartSec = bar * SPB * stepSec; // onde a voz original entra
           song.voiceOffsetSec = t0;
         }
+        if (section === 'melodia') firstMel = false;
       }
       bar += bars;
     });
-    // Letra: as sílabas são encaixadas, em ordem, nas notas que a pessoa cantou.
-    const syls = [].concat(...global.TextAnalyzer.lyricsToStanzas(o.lyrics || '').map((st) => [].concat(...st)));
     if (syls.length) {
-      let k = 0;
-      for (const n of song.parts.lead) {
-        n.syl = syls[k % syls.length];
-        k++;
-      }
-      song.lyricsFit = { syllables: syls.length, notes: mel.length };
+      const flags = global.TextAnalyzer.stressFlags(syls);
+      song.parts.lead.forEach((n, k) => {
+        if (k < syls.length) { n.syl = syls[k]; n.vel = flags[k] ? 0.95 : 0.75; }
+      });
+      song.lyricsFit = { syllables: syls.length, notes: mel.length, reps };
     }
     // Na variação, a melodia é dobrada uma oitava acima com outro timbre.
     if (withVariation) {

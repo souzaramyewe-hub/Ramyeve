@@ -110,6 +110,32 @@
     return parts.filter(Boolean);
   }
 
+  /* Sílaba tônica (forte) de cada palavra, pelas regras do português. */
+  const ATONAS = new Set(['o', 'a', 'os', 'as', 'um', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'e', 'que', 'me', 'te', 'se', 'lhe', 'por', 'pra', 'pro', 'com', 'sem', 'mas', 'meu', 'teu', 'seu', 'ao', 'aos', 'num', 'nem', 'ou']);
+  function stressOfWord(parts) {
+    const n = parts.length;
+    const w = parts.join('').toLowerCase();
+    if (n === 1) return ATONAS.has(w) ? -1 : 0;
+    for (let i = 0; i < n; i++) if (/[áéíóúâêô]/.test(parts[i].toLowerCase())) return i;
+    for (let i = 0; i < n; i++) if (/[ãõ]/.test(parts[i].toLowerCase())) return i;
+    if (/(r|l|z|x|i|is|u|us|im|ins|um|uns|om|ons)$/.test(normalize(w))) return n - 1;
+    return n - 2;
+  }
+  /* Recebe sílabas no formato da letra ("can-", "ção") e diz quais são fortes. */
+  function stressFlags(syls) {
+    const flags = new Array(syls.length).fill(false);
+    let start = 0;
+    for (let i = 0; i < syls.length; i++) {
+      if (!/-$/.test(syls[i]) || i === syls.length - 1) {
+        const parts = syls.slice(start, i + 1).map((x) => x.replace(/-$/, '').replace(/[^\p{L}]/gu, ''));
+        const k = stressOfWord(parts);
+        if (k >= 0) flags[start + k] = true;
+        start = i + 1;
+      }
+    }
+    return flags;
+  }
+
   function lyricsToStanzas(lyrics) {
     const raw = (lyrics || '').trim();
     if (!raw) return [];
@@ -123,7 +149,18 @@
           const parts = syllabify(w.replace(/[^\p{L}\p{N}'-]/gu, '') || w);
           parts.forEach((p, i) => syl.push(i === parts.length - 1 ? p : p + '-'));
         }
-        for (let i = 0; i < syl.length; i += 12) out.push(syl.slice(i, i + 12));
+        // frases longas são divididas em pedaços de até ~12 sílabas, sem cortar palavras
+        let i = 0;
+        while (i < syl.length) {
+          let j = Math.min(syl.length, i + 12);
+          if (j < syl.length) {
+            let k = j;
+            while (k > i + 4 && /-$/.test(syl[k - 1])) k--;
+            j = k;
+          }
+          out.push(syl.slice(i, j));
+          i = j;
+        }
       }
       return out;
     });
@@ -201,5 +238,5 @@
     };
   }
 
-  global.TextAnalyzer = { analyze, normalize, syllabify, lyricsToStanzas };
+  global.TextAnalyzer = { analyze, normalize, syllabify, lyricsToStanzas, stressFlags };
 })(window);
