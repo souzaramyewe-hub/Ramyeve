@@ -23,7 +23,7 @@
         hat:   'x.x.x.x.x.x.x.x.',
       },
       bass: 'pop', chords: { inst: 'piano', rhythm: 'pop' }, pad: 'pad',
-      lead: 'synthLead', bassInst: 'synthBass', density: 0.55,
+      lead: 'synthLead', bassInst: 'fingerBass', density: 0.55,
     },
     {
       id: 'rock', name: 'Rock', emoji: '🎸',
@@ -131,7 +131,7 @@
         hat:   'x.x.x.x.x.x.x.x.',
       },
       bass: 'reggae', chords: { inst: 'organ', rhythm: 'skank' },
-      lead: 'melodica', bassInst: 'synthBass', density: 0.4,
+      lead: 'melodica', bassInst: 'fingerBass', density: 0.4,
       prog: { major: [[0, 3, 0, 4], [0, 5, 3, 4]], minor: [[0, 3, 0, 3], [0, 6, 5, 6]] },
     },
     {
@@ -185,7 +185,7 @@
         hat:   'x.xgx.xgx.xgx.xg',
       },
       bass: 'pop', chords: { inst: 'epiano', rhythm: 'lofi', sevenths: true },
-      lead: 'bell', bassInst: 'synthBass', density: 0.35, lofi: true,
+      lead: 'bell', bassInst: 'fingerBass', density: 0.35, lofi: true,
       prog: { major: [[3, 2, 1, 0], [1, 4, 0, 5], [3, 4, 2, 5]], minor: [[0, 3, 6, 2], [5, 4, 0, 0]] },
     },
     {
@@ -239,7 +239,7 @@
         hat:   'x.x.x.x.x.x.x.x.',
       },
       bass: 'pop', chords: { inst: 'piano', rhythm: 'arp' }, pad: 'strings',
-      lead: 'flute', bassInst: 'synthBass', density: 0.4,
+      lead: 'flute', bassInst: 'fingerBass', density: 0.4,
       prog: { major: [[0, 4, 5, 3], [3, 0, 4, 5], [0, 3, 5, 4]], minor: [[5, 3, 0, 4]] },
     },
     {
@@ -252,7 +252,7 @@
         hat:   'x.x.x.x.x.x.x.x.',
       },
       bass: 'pop', chords: { inst: 'piano', rhythm: 'arp' }, pad: 'strings',
-      lead: 'violin', bassInst: 'synthBass', density: 0.4,
+      lead: 'violin', bassInst: 'fingerBass', density: 0.4,
       prog: { major: [[0, 4, 5, 3], [0, 5, 3, 4], [3, 4, 2, 5]], minor: [[0, 5, 3, 4]] },
     },
     {

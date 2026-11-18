@@ -60,6 +60,7 @@ Se nenhum estilo for citado, o app sugere um a partir do clima.
 | `js/composer.js` | Compõe estrutura (intro, verso, refrão, ponte, final), harmonia, baixo, bateria e melodia; harmoniza a melodia cantada |
 | `js/pitch.js` | Detecta a altura da voz (algoritmo YIN) e segmenta em notas |
 | `js/voice.js` | Clonagem de voz (marcas de pitch por vogal), canto por TD-PSOLA com consoantes do português, vozes sintéticas e armazenamento local (IndexedDB) |
+| `js/sampler.js` | Toca os instrumentos e baterias gravados (com reserva sintetizada) |
 | `js/synth.js` | Sintetizador com Web Audio API: ~25 instrumentos e bateria gerados por síntese, reverb, mixagem por faixas |
 | `js/export.js` | Mixagem final e exportação MIDI |
 | `js/formats.js` | Codificadores de MP3 (via lamejs), FLAC (codificador próprio), WAV 16/24 bits e ZIP |
@@ -84,6 +85,17 @@ Para clonar melhor: ambiente silencioso, cante cada vogal **sem parar e na mesma
 - Cante perto do microfone, em ambiente silencioso e **sem música de fundo**.
 - Separe bem as notas (sílabas como "lá-lá-lá" funcionam melhor que um "uuuu" contínuo).
 - Trechos de 5 a 20 segundos dão os melhores resultados.
+
+## Sons gravados
+
+Os instrumentos e as baterias são **gravações reais**, gratuitas e de uso livre:
+
+| Banco | Instrumentos | Licença |
+|---|---|---|
+| [FluidR3_GM](https://github.com/gleitz/midi-js-soundfonts), de Frank Wen | piano, piano elétrico, órgão, violão nylon e aço, guitarras, baixos, violino, violoncelo, cordas, sax, flauta, sanfona, gaita, vibrafone | CC BY 3.0 (exige citar a fonte) |
+| [kringel-samples](https://github.com/Gradigang-Solutions/kringel-samples) (Sonic Pi acústico e TR-808 de Michael Fischer) | baterias acústica e eletrônica | CC0 (domínio público) |
+
+Os arquivos ficam em `js/samples/` e são gerados por `tools/build_samples.py` (uma nota gravada a cada 3 semitons, em MP3 mono). Sintetizadores (808, pads e leads eletrônicos) continuam sintetizados, porque é assim que soam nesses estilos.
 
 ## Projetos de referência
 

@@ -277,6 +277,7 @@
       osc(ctx, 'square', f / 2, t, e.end).connect(lp);
       ws.connect(lp).connect(e.g).connect(out);
     },
+    fingerBass(ctx, out, t, m, dur, vel) { INST.acousticBass(ctx, out, t, m, dur, vel); },
     acousticBass(ctx, out, t, m, dur, vel) {
       const f = mtof(m);
       const e = env(ctx, t, dur * 0.9, 0.006, 0.6, 0.35, 0.1, vel * 0.5);
@@ -488,7 +489,11 @@
         vel *= pos === 0 ? 1 : pos === 2 ? 0.78 : 0.62;
         vel *= 0.8 + Math.random() * 0.2;
       } else vel *= 0.9 + Math.random() * 0.1;
-      ev.push({ t, end: t + (d.lane === 'crash' ? 1.7 : 0.6), play: (ctx, B, tt) => fn(ctx, B.out('d_' + d.lane, 'drums', 1, DRUM_PANS[d.lane] || 0), tt, vel, B.sh, song.style) });
+      ev.push({ t, end: t + (d.lane === 'crash' || d.lane === 'ride' || d.lane === 'ohat' ? 2.3 : 1.3), play: (ctx, B, tt) => {
+        const out = B.out('d_' + d.lane, 'drums', 1, DRUM_PANS[d.lane] || 0);
+        // bateria gravada quando disponível; sintetizada como reserva
+        if (!(global.Sampler && global.Sampler.playDrum(ctx, out, tt, d.lane, vel, song.style))) fn(ctx, out, tt, vel, B.sh, song.style);
+      } });
     }
     const part = (notes, instName, bus, gain, pan, key) => {
       if (!notes || !instName) return;
@@ -496,7 +501,11 @@
       for (const n of notes) {
         const t = stepToTime(song, n.step);
         const dur = Math.max(0.05, n.dur * stepDur * 0.98);
-        ev.push({ t, end: t + dur + 1.3, play: (ctx, B, tt) => inst(ctx, B.out(key, bus, gain, pan), tt, n.midi, dur, n.vel, B.sh) });
+        ev.push({ t, end: t + dur + 1.3, play: (ctx, B, tt) => {
+          const out = B.out(key, bus, gain, pan);
+          // instrumento gravado quando disponível; sintetizado como reserva
+          if (!(global.Sampler && global.Sampler.playNote(ctx, out, tt, n.midi, dur, n.vel, instName))) inst(ctx, out, tt, n.midi, dur, n.vel, B.sh);
+        } });
       }
     };
     part(song.parts.bass, song.instruments.bass, 'bass', 1, 0, 'bass');
@@ -527,6 +536,7 @@
    */
   async function render(song, opts) {
     opts = opts || {};
+    if (global.Sampler) { try { await global.Sampler.ensureForSong(song); } catch (e) { console.warn(e); } }
     const stepDur = 60 / song.bpm / 4;
     const reverbSec = song.style.id === 'ambient' || song.style.id === 'classica' ? 3.5 : 2.2;
     const duration = song.totalBars * 16 * stepDur + reverbSec + 0.5;
