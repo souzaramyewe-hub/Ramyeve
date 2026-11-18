@@ -214,7 +214,7 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     } catch (e) {
-      $('cloneStatus').textContent = window.claude ? '⚠️ Nesta versão de teste o navegador não libera o microfone. Para clonar a voz, use a versão completa do site (GitHub Pages).' : '⚠️ Não foi possível acessar o microfone. Permita o acesso (ícone de cadeado ao lado do endereço) e tente de novo.';
+      $('cloneStatus').textContent = '⚠️ ' + micHelp(e);
       return;
     }
     stop();
@@ -314,6 +314,18 @@
     return state.ctx;
   }
 
+  /* Explica por que o microfone falhou e o que fazer. */
+  function micHelp(e) {
+    if (window.claude) return 'Nesta versão de teste o microfone fica bloqueado. Use o site completo (souzaramyewe-hub.github.io/Ramyeve) ou “Enviar áudio”.';
+    const n = e && e.name;
+    if (n === 'NotAllowedError' || n === 'SecurityError') {
+      return 'O microfone está bloqueado para este site. Clique no ícone à esquerda do endereço (barra do navegador) → Microfone → Permitir, e recarregue a página. Se não resolver, no Windows abra Configurações → Privacidade e segurança → Microfone e ligue o acesso.';
+    }
+    if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'Nenhum microfone foi encontrado neste aparelho. Conecte um fone com microfone ou grave no celular e use “Enviar áudio”.';
+    if (n === 'NotReadableError') return 'O microfone está sendo usado por outro programa (ex.: Meet, WhatsApp). Feche a chamada e tente de novo.';
+    return 'Não foi possível usar o microfone. Grave no celular e use “Enviar áudio”.';
+  }
+
   /* ---------------- voz real com IA (Seed-VC) ---------------- */
 
   function currentToken() { return ($('hfToken').value || $('hfToken2').value || '').trim(); }
@@ -364,7 +376,7 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
     } catch (e) {
-      $('refStatus').textContent = '⚠️ O microfone não está disponível aqui. Grave no celular (gravador de voz ou WhatsApp) e use “Enviar áudio”.';
+      $('refStatus').textContent = '⚠️ ' + micHelp(e);
       return;
     }
     const mr = new MediaRecorder(stream);
@@ -556,7 +568,7 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (e) {
-      setStatus('O microfone não está disponível aqui. Permita o acesso ao microfone (ícone de cadeado ao lado do endereço) ou use “Enviar áudio”.', true);
+      setStatus(micHelp(e), true);
       return;
     }
     const ctx = audioCtx();
