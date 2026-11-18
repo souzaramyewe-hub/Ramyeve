@@ -228,8 +228,10 @@
       const dir = progress < 0.55 ? 1 : -1; // arco: sobe e depois desce
       const strong = n.stress != null ? (n.stress || i === total - 1) : ((n.step % 8 === 0) || n.dur >= 4 || i === total - 1);
       if (strong) {
-        const cands = [];
-        for (let d = lo; d <= hi; d++) if (isChordTone(d)) cands.push(d);
+        // nota do acorde mais próxima (no máximo 2 graus de distância): evita saltos
+        let cands = [];
+        for (let d = lo; d <= hi; d++) if (isChordTone(d) && Math.abs(d - cur) <= 2) cands.push(d);
+        if (!cands.length) for (let d = lo; d <= hi; d++) if (isChordTone(d)) cands.push(d);
         cands.sort((a, b) => scoreTone(a) - scoreTone(b));
         cur = cands[0];
         if (i === total - 1) { // termina na fundamental ou terça
@@ -238,7 +240,7 @@
           if (fin.length) cur = fin[0];
         }
       } else {
-        const step = r.weighted([[1, 0.55], [2, 0.25], [0, 0.12], [3, 0.08]]);
+        const step = r.weighted([[1, 0.6], [0, 0.25], [2, 0.15]]);
         const d = r.chance(0.75) ? dir : -dir;
         cur += step * d;
       }
@@ -247,8 +249,8 @@
       return { step: n.step, dur: n.dur, deg: cur, stress: n.stress };
 
       function scoreTone(d) {
-        const target = cur + dir * (r() < 0.5 ? 1 : 2);
-        return Math.abs(d - target) + (d === cur ? 0.6 : 0);
+        const target = cur + dir * (r() < 0.7 ? 1 : 0);
+        return Math.abs(d - target) + (d === cur ? 0.3 : 0);
       }
     });
   }

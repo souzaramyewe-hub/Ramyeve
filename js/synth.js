@@ -337,7 +337,7 @@
   /* prato metálico estilo 808: seis osciladores quadrados em razões inarmônicas */
   const METAL = [205.3, 304.4, 369.6, 522.7, 540, 800];
   function metal(ctx, out, t, decay, gain, hp) {
-    const sum = ctx.createGain(); sum.gain.value = 0.18;
+    const sum = ctx.createGain(); sum.gain.value = 0.5;
     for (const f of METAL) { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f * 1.7; o.connect(sum); o.start(t); o.stop(t + decay + 0.05); }
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 10000; bp.Q.value = 0.8;
     const h = ctx.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp || 7000;
@@ -353,7 +353,7 @@
       if (style.bass === '808') toneHit(ctx, out, t, 160, 48, 0.05, 0.35, v * 0.95);
       else {
         toneHit(ctx, out, t, 170, 50, 0.07, 0.42, v * 0.95);
-        toneHit(ctx, out, t, 60, 52, 0.2, 0.3, v * 0.35); // corpo
+        toneHit(ctx, out, t, 60, 52, 0.2, 0.25, v * 0.2); // corpo
       }
       toneHit(ctx, out, t, 2200, 900, 0.008, 0.012, v * 0.18, 'triangle'); // ataque do batedor
       noiseHit(ctx, out, sh, t, 'highpass', 3000, 0.7, 0.01, v * 0.18);
@@ -380,7 +380,7 @@
       noiseHit(ctx, out, sh, t, 'highpass', 4500, 0.5, 1.8, v * 0.2);
     },
     rim(ctx, out, t, v) { toneHit(ctx, out, t, 1700, 1500, 0.02, 0.04, v * 0.3, 'square'); },
-    shaker(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'bandpass', 9000, 1.5, 0.05, v * 0.14); },
+    shaker(ctx, out, t, v, sh) { noiseHit(ctx, out, sh, t, 'bandpass', 8000, 1.2, 0.06, v * 0.4); },
     perc(ctx, out, t, v, sh, style) {
       if (style.id === 'forro') { // triângulo
         toneHit(ctx, out, t, 4200, 4200, 0.1, v > 0.6 ? 0.35 : 0.08, v * 0.06, 'sine');
@@ -427,9 +427,15 @@
       const input = ctx.createGain();
       const sum = ctx.createGain();
       let chainOut = input;
+      // EQ de mixagem: cada parte no seu espaço de frequência
+      const eq = (type, f, gain, q) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (gain != null) b.gain.value = gain; if (q) b.Q.value = q; chainOut.connect(b); chainOut = b; };
+      if (name === 'bass') { eq('highpass', 32, null, 0.7); eq('peaking', 250, -3, 1); }
+      if (name === 'drums') { eq('highpass', 28, null, 0.7); eq('peaking', 300, -3, 0.9); eq('highshelf', 6000, 3); }
+      if (name === 'harmony') { eq('highpass', 140, null, 0.7); eq('peaking', 400, -2, 1); eq('highshelf', 4500, 4); }
+      if (name === 'melody') { eq('highpass', 180, null, 0.7); eq('highshelf', 4500, 3); }
       if (song.style.lofi && name !== 'voice') {
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
-        input.connect(lp); chainOut = lp;
+        chainOut.connect(lp); chainOut = lp;
       }
       chainOut.connect(sum);
       const amt = REVERB[name] * ambient;
@@ -562,7 +568,7 @@
     if (opts.voiceBuffer && song.voiceStartSec != null) {
       longSources.push({ buffer: opts.voiceBuffer, when: song.voiceStartSec - song.voiceOffsetSec, gain: 1.4, bus: 'voice', comp: true });
     }
-    if (opts.vocalBuffer) longSources.push({ buffer: opts.vocalBuffer, when: 0, gain: 1.6, bus: 'voice', comp: true, studio: true });
+    if (opts.vocalBuffer) longSources.push({ buffer: opts.vocalBuffer, when: 0, gain: 0.9, bus: 'voice', comp: true, studio: true });
     const LCHUNK = 8;
     const longChunks = [];
     if (longSources.length || song.style.lofi) {
@@ -644,7 +650,32 @@
     const cores = (navigator.hardwareConcurrency || 4);
     await pool(tasks, Math.max(2, Math.min(4, cores)));
     if (opts.onProgress) opts.onProgress(1);
+    balanceStems(stems, !!opts.vocalBuffer);
     return { stems, duration, stepDur, sampleRate: SR };
+  }
+
+  /*
+   * Equilíbrio automático: mede o volume de cada parte (só onde ela toca) e
+   * ajusta para uma mixagem de referência. Sem isso, o baixo e o bumbo
+   * encobriam a harmonia e a melodia.
+   */
+  const TARGET_DB = { drums: -19, bass: -21, harmony: -21, melody: -21, voice: -16 };
+  function balanceStems(stems, hasVocal) {
+    for (const name of STEMS) {
+      const b = stems[name];
+      const L = b.getChannelData(0), R = b.getChannelData(1);
+      let e = 0, n = 0;
+      for (let i = 0; i < L.length; i += 4) {
+        const v = (Math.abs(L[i]) + Math.abs(R[i])) / 2;
+        if (v > 1e-3) { e += v * v; n++; }
+      }
+      if (!n) continue;
+      const rmsDb = 10 * Math.log10(e / n);
+      let target = TARGET_DB[name];
+      if (name === 'melody' && hasVocal) target = -25; // com voz, o instrumento da melodia só acompanha
+      const g = Math.min(8, Math.pow(10, (target - rmsDb) / 20));
+      for (let i = 0; i < L.length; i++) { L[i] *= g; R[i] *= g; }
+    }
   }
 
   global.Synth = { render, STEMS, stepToTime, INSTRUMENT_NAMES: Object.keys(INST) };
