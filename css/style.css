@@ -199,6 +199,20 @@ audio { width: 100%; margin: 6px 0; }
 .wizard .meter { margin: 0 0 12px; height: 10px; }
 #cloneProgress { height: 100%; width: 0; background: var(--accent); }
 
+/* qualidade (motor) */
+.engine-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin: 0 0 8px; cursor: pointer; font-weight: 500; }
+.engine-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.engine-opt:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.engine-opt input { margin-top: 4px; accent-color: var(--accent); }
+.engine-opt span { display: grid; gap: 2px; }
+.engine-opt small { font-size: .82rem; line-height: 1.4; }
+.ai-box { margin-top: 6px; }
+.ai-box input[type=password] { width: 100%; font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.howto { margin-top: 8px; }
+.howto summary { cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--accent-2); }
+.howto ol { padding-left: 20px; margin: 8px 0; }
+.howto a { color: var(--accent-2); }
+
 /* console de ajustes */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .grid label { margin-top: 10px; }

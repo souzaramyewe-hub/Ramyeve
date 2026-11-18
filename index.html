@@ -113,6 +113,29 @@
 
       <!-- 4. Ajustes + gerar -->
       <aside class="console" aria-labelledby="st4">
+        <section class="step engine" aria-labelledby="stq">
+          <header class="step-head"><span class="num">★</span><h2 id="stq">Qualidade</h2></header>
+          <label class="engine-opt"><input type="radio" name="engine" id="engFast" value="fast" checked>
+            <span><b>Rápido, no navegador</b><small class="muted">Pronto em segundos. Instrumentos gravados, voz sintética.</small></span></label>
+          <label class="engine-opt" id="engAiWrap"><input type="radio" name="engine" id="engAi" value="ai">
+            <span><b>IA com voz realista</b><small class="muted">ACE-Step, grátis. Canta a letra com voz de verdade. Leva de 30 s a 2 min.</small></span></label>
+          <p id="aiBlocked" class="muted small hidden">Indisponível nesta versão de teste, que bloqueia conexões com outros sites. Funciona na versão completa (GitHub Pages).</p>
+          <div id="aiBox" class="ai-box hidden">
+            <label for="hfToken">Sua chave grátis do Hugging Face</label>
+            <input type="password" id="hfToken" placeholder="hf_..." autocomplete="off" spellcheck="false">
+            <label class="check small"><input type="checkbox" id="hfRemember" checked> Lembrar neste aparelho</label>
+            <details class="howto">
+              <summary>Como conseguir a chave grátis (2 minutos)</summary>
+              <ol class="small">
+                <li>Crie uma conta grátis em <a href="https://huggingface.co/join" target="_blank" rel="noopener">huggingface.co/join</a> e confirme o e-mail.</li>
+                <li>Abra <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.</li>
+                <li>Toque em <b>Create new token</b>, escolha o tipo <b>Read</b>, dê um nome (ex.: ramyeve) e crie.</li>
+                <li>Copie a chave (começa com <b>hf_</b>) e cole no campo acima.</li>
+              </ol>
+              <p class="small muted">A conta grátis dá alguns minutos de IA por dia, o suficiente para algumas músicas. A chave fica só no seu aparelho.</p>
+            </details>
+          </div>
+        </section>
         <section class="step">
           <header class="step-head"><span class="num">4</span><h2 id="st4">Ajustes</h2></header>
           <div class="grid">
@@ -213,6 +236,7 @@
   <script src="js/sampler.js"></script>
   <script src="js/synth.js"></script>
   <script src="js/voice.js"></script>
+  <script src="js/aiMusic.js"></script>
   <script src="js/export.js"></script>
   <script src="js/vendor/lame.min.js"></script>
   <script src="js/formats.js"></script>

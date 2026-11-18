@@ -26,13 +26,14 @@
     harmony: { label: 'Harmonia', color: '#4d8fe0' },
     melody: { label: 'Melodia', color: '#e0492f' },
     voice: { label: 'Sua voz', color: '#9b6bdf' },
+    music: { label: 'Música (IA)', color: '#e0492f' },
   };
 
   const state = {
     tab: 'texto',
     song: null, render: null, variation: 0,
     voiceBuffer: null, voiceNotes: null,
-    gains: { drums: 0.9, bass: 0.9, harmony: 0.8, melody: 0.9, voice: 1 },
+    gains: { drums: 0.9, bass: 0.9, harmony: 0.8, melody: 0.9, voice: 1, music: 1 },
     ctx: null, sources: [], gainNodes: {}, playing: false, startAt: 0, offset: 0,
     raf: 0,
   };
@@ -40,6 +41,7 @@
   /* ---------------- inicialização ---------------- */
 
   function init() {
+    initEngine();
     if (window.claude) $('envNote').classList.remove('hidden'); // página publicada no Claude
     const ex = $('examples');
     EXAMPLES.forEach((t) => {
@@ -347,6 +349,64 @@
     return res;
   }
 
+  /* ---------------- modo IA (ACE-Step) ---------------- */
+
+  const TOKEN_KEY = 'ramyeve-hf-token';
+  function engine() { return $('engAi').checked && AIMusic.available() ? 'ai' : 'fast'; }
+
+  function initEngine() {
+    const sync = () => $('aiBox').classList.toggle('hidden', !$('engAi').checked);
+    $('engFast').onchange = sync;
+    $('engAi').onchange = sync;
+    if (!AIMusic.available()) {
+      $('engAi').disabled = true;
+      $('aiBlocked').classList.remove('hidden');
+    }
+    try { const t = localStorage.getItem(TOKEN_KEY); if (t) $('hfToken').value = t; } catch (e) { /* sem armazenamento */ }
+  }
+
+  async function generateAI(song) {
+    if (state.tab !== 'texto') {
+      setStatus('O modo IA funciona na aba “Por texto”. Para usar sua melodia gravada, escolha “Rápido, no navegador”.', true);
+      return song;
+    }
+    const token = $('hfToken').value.trim();
+    if (!/^hf_/.test(token)) {
+      setStatus('Cole sua chave grátis do Hugging Face (começa com hf_). Veja “Como conseguir a chave grátis”.', true);
+      $('hfToken').focus();
+      return song;
+    }
+    try {
+      if ($('hfRemember').checked) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
+    } catch (e) { /* sem armazenamento */ }
+    const singer = $('singerSel').value === 'masc' ? 'masc' : 'fem';
+    const duration = Math.min(240, Math.max(20, Synth.stepToTime(song, song.totalBars * 16)));
+    $('btnGen').disabled = $('btnAgain').disabled = true;
+    try {
+      const buf = await AIMusic.generate({
+        tags: AIMusic.buildTags(song, singer),
+        lyrics: AIMusic.buildLyrics($('lyrics').value),
+        duration, token, onStatus: (t) => setStatus(t),
+      });
+      const st = new AudioBuffer({ numberOfChannels: 2, length: buf.length, sampleRate: buf.sampleRate });
+      st.copyToChannel(buf.getChannelData(0), 0);
+      st.copyToChannel(buf.getChannelData(buf.numberOfChannels > 1 ? 1 : 0), 1);
+      song.singer = singer === 'masc' ? 'Voz de IA masculina' : 'Voz de IA feminina';
+      state.song = song;
+      state.render = { stems: { music: st }, duration: buf.duration, sampleRate: buf.sampleRate, hasVoice: false, ai: true };
+      state.offset = 0;
+      showResult();
+      setStatus('');
+      play();
+    } catch (e) {
+      console.error(e);
+      setStatus(e.message || 'Não foi possível gerar com a IA.', true);
+    } finally {
+      $('btnGen').disabled = $('btnAgain').disabled = false;
+    }
+    return song;
+  }
+
   /* ---------------- geração ---------------- */
 
   async function generate(again) {
@@ -381,6 +441,7 @@
       setStatus(e.message || 'Erro ao compor.', true);
       return;
     }
+    if (engine() === 'ai') return generateAI(song);
     $('btnGen').disabled = $('btnAgain').disabled = true;
     setStatus('Compondo e tocando os instrumentos… 🎼');
     await new Promise((r) => setTimeout(r, 30));
@@ -435,13 +496,14 @@
       .concat(s.lyricsFit && s.lyricsFit.reps > 1
         ? ['📝 sua melodia tocada ' + s.lyricsFit.reps + 'x para caber a letra inteira']
         : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
+    if (state.render.ai) tags.splice(1, 0, '🤖 Gerada por IA (ACE-Step)');
+    $('roll').parentElement.classList.toggle('hidden', !!state.render.ai);
     $('songTags').innerHTML = '';
     tags.forEach((t) => { const e = document.createElement('span'); e.className = 'tag'; e.textContent = t; $('songTags').appendChild(e); });
 
     const mix = $('mixer');
     mix.innerHTML = '';
-    Synth.STEMS.forEach((name) => {
-      if (name === 'voice' && !state.render.hasVoice) return;
+    stemNames().forEach((name) => {
       const wrap = document.createElement('div');
       const lab = document.createElement('label');
       const label = name === 'voice' && s.singer ? 'Voz cantando' : STEM_INFO[name].label;
@@ -477,7 +539,8 @@
     const when = ctx.currentTime + 0.05;
     const voiceOn = state.render.hasVoice;
     state.gainNodes = {};
-    state.sources = Synth.STEMS.filter((n) => n !== 'voice' || voiceOn).map((name) => {
+    void voiceOn;
+    state.sources = stemNames().map((name) => {
       const src = ctx.createBufferSource();
       src.buffer = state.render.stems[name];
       const g = ctx.createGain(); g.gain.value = state.gains[name];
@@ -546,7 +609,7 @@
   function drawRoll() {
     const cv = $('roll');
     const s = state.song;
-    if (!s || !state.render || cv.offsetParent === null) return;
+    if (!s || !state.render || state.render.ai || cv.offsetParent === null) return;
     const dpr = window.devicePixelRatio || 1;
     const W = cv.clientWidth, H = cv.clientHeight;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
@@ -656,7 +719,12 @@
     $('fmtSize').textContent = est ? '(≈ ' + fmtBytes(est) + ')' : '';
   }
 
-  const STEM_FILE = { drums: '1-bateria', bass: '2-baixo', harmony: '3-harmonia', melody: '4-melodia', voice: '5-voz' };
+  const STEM_FILE = { drums: '1-bateria', bass: '2-baixo', harmony: '3-harmonia', melody: '4-melodia', voice: '5-voz', music: '1-musica-ia' };
+
+  /* faixas presentes no resultado atual (no modo IA há uma só) */
+  function stemNames() {
+    return Object.keys(state.render.stems).filter((n) => n !== 'voice' || state.render.hasVoice);
+  }
 
   async function downloadSelected() {
     if (!state.render || !state.song) return;
@@ -665,6 +733,10 @@
     const status = (t) => { $('dlStatus').textContent = t; };
     btn.disabled = true;
     try {
+      if (f === 'midi' && state.render.ai) {
+        status('No modo IA a música já vem pronta em áudio, sem partitura. Escolha MP3, WAV ou FLAC.');
+        return;
+      }
       if (f === 'midi') {
         const got = await Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
         status(got ? '✅ Pronto: ' + got : 'Download cancelado.');
@@ -686,15 +758,14 @@
         ext = 'wav';
       } else if (f === 'zip') {
         const files = [{ name: '0-mix-completo.wav', blob: Formats.wav(mix, 16) }];
-        for (const name of Synth.STEMS) {
-          if (name === 'voice' && !state.render.hasVoice) continue;
+        for (const name of stemNames()) {
           status('Preparando faixa: ' + STEM_INFO[name].label + '…');
           await new Promise((r) => setTimeout(r, 10));
           const st = state.render.stems[name];
           const one = { L: st.getChannelData(0), R: st.getChannelData(1), sr: st.sampleRate };
           files.push({ name: STEM_FILE[name] + '.wav', blob: Formats.wav(one, 16) });
         }
-        files.push({ name: '6-partitura.mid', blob: Exporter.toMidi(state.song) });
+        if (!state.render.ai) files.push({ name: '6-partitura.mid', blob: Exporter.toMidi(state.song) });
         status('Compactando ZIP…');
         blob = await Formats.zip(files);
         ext = 'zip';
