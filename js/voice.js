@@ -291,6 +291,35 @@
       });
     } catch (e) { return null; }
   }
+  async function saveRef(blob) {
+    const d = await db();
+    return new Promise((res, rej) => {
+      const tx = d.transaction('voz', 'readwrite');
+      tx.objectStore('voz').put(blob, 'referencia');
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+  async function loadRef() {
+    try {
+      const d = await db();
+      return await new Promise((res) => {
+        const r = d.transaction('voz').objectStore('voz').get('referencia');
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch (e) { return null; }
+  }
+  async function deleteRef() {
+    const d = await db();
+    return new Promise((res) => {
+      const tx = d.transaction('voz', 'readwrite');
+      tx.objectStore('voz').delete('referencia');
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => res(false);
+    });
+  }
+
   async function deleteProfile() {
     const d = await db();
     return new Promise((res) => {
@@ -639,7 +668,7 @@
   global.VoiceClone = {
     VOWELS, SEG_SEC, LEAD_IN,
     profileFromGuidedRecording, profileFromFreeRecording, buildProfile, syntheticProfile,
-    saveProfile, loadProfile, deleteProfile,
+    saveProfile, loadProfile, deleteProfile, saveRef, loadRef, deleteRef,
     renderSinging, songToSinging, demo, parseSyllable,
     _synthVowel: synthVowelRecording,
   };

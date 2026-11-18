@@ -129,7 +129,21 @@ audio { width: 100%; margin: 6px 0; }
 .voice-info { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: .9rem; margin-bottom: 10px; }
 #panel-voz textarea { margin-bottom: 10px; }
 
+/* ritmo (aba Cantar) */
+.rhythm { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; margin: 12px 0; }
+.rhythm-title { font: 800 1rem var(--font-display); }
+.rhythm-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.bpm-box { display: flex; align-items: center; gap: 6px; }
+.bpm-box input { width: 76px; text-align: center; padding: 8px; font-weight: 700; }
+.bpm-box input:disabled { opacity: .5; }
+.pill.tap { flex: 1; min-width: 160px; padding: 12px; font-size: 1rem; }
+.pill.tap.hit { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.count-in { text-align: center; font: 800 2.6rem var(--font-display); color: var(--accent); min-height: 1.2em; }
+
 /* clonagem */
+.clone-ai { background: var(--accent-soft); border: 1px solid rgba(255, 122, 69, .35); border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+.clone-ai p { margin: 0; }
+.badge { font: 700 .7rem var(--font-body); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 4px; }
 .clone-box { background: var(--surface-2); border-radius: 14px; padding: 12px; }
 .clone-status { font-size: .92rem; margin-bottom: 10px; }
 .clone-actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -60,6 +60,7 @@ Se nenhum estilo for citado, o app sugere um a partir do clima.
 | `js/composer.js` | Compõe estrutura (intro, verso, refrão, ponte, final), harmonia, baixo, bateria e melodia; harmoniza a melodia cantada |
 | `js/pitch.js` | Detecta a altura da voz (algoritmo YIN) e segmenta em notas |
 | `js/voice.js` | Clonagem de voz (marcas de pitch por vogal), canto por TD-PSOLA com consoantes do português, vozes sintéticas e armazenamento local (IndexedDB) |
+| `js/aiMusic.js` | Conexão com ACE-Step (música com voz) e Seed-VC (troca para a voz da pessoa) no Hugging Face |
 | `js/sampler.js` | Toca os instrumentos e baterias gravados (com reserva sintetizada) |
 | `js/synth.js` | Sintetizador com Web Audio API: ~25 instrumentos e bateria gerados por síntese, reverb, mixagem por faixas |
 | `js/export.js` | Mixagem final e exportação MIDI |
@@ -68,6 +69,17 @@ Se nenhum estilo for citado, o app sugere um a partir do clima.
 | `js/app.js` | Interface, gravação, reprodução, mixer e visualização (piano roll) |
 
 A composição é determinística: o mesmo texto gera a mesma música; "Outra versão" muda a semente.
+
+## Ritmo na aba "Cantar"
+
+- **Metrônomo** com 4 batidas de contagem ("1, 2, 3, 4, cante!") enquanto você grava; as notas são encaixadas exatamente nas batidas que você ouviu.
+- **Toque no ritmo**: toque o botão no ritmo da música e o app calcula a velocidade (bpm). Também dá para digitar o bpm ou deixar o app detectar sozinho.
+
+## Voz real com IA (grátis)
+
+- **Música completa cantada**: modo "IA com voz realista" em Ajustes, usando o [ACE-Step](https://huggingface.co/spaces/ACE-Step/Ace-Step-v1.5) oficial (com reserva na versão 1.0).
+- **Sua voz real**: em "Clonar voz", grave ou envie 10–30 s da sua voz; ao criar a música, a voz cantada é trocada pela sua com o [Seed-VC](https://huggingface.co/spaces/Plachta/Seed-VC) oficial (modo canto, mantém a melodia).
+- Ambos precisam de uma chave grátis do Hugging Face (tipo "Read") e funcionam na versão completa do site (GitHub Pages). A chave é enviada só aos servidores oficiais.
 
 ## Sobre a voz clonada
 

@@ -566,20 +566,28 @@
     if (o.mode && o.mode !== 'auto') mode = o.mode;
 
     const prefer = Math.round((style.bpm[0] + style.bpm[1]) / 2);
-    let bpm = o.bpm || a.bpm || estimateTempo(vNotes, prefer);
-    // dobra/divide para cair na faixa do estilo
-    if (!o.bpm && !a.bpm) {
+    // o.grid: ritmo marcado pela pessoa com o metrônomo { bpm, offset (s da 1ª batida após a contagem) }
+    const grid = o.grid && o.grid.bpm ? o.grid : null;
+    let bpm = (grid && grid.bpm) || o.bpm || a.bpm || estimateTempo(vNotes, prefer);
+    // dobra/divide para cair na faixa do estilo (só quando o ritmo foi detectado sozinho)
+    if (!grid && !o.bpm && !a.bpm) {
       while (bpm < style.bpm[0] - 15 && bpm * 2 <= 200) bpm *= 2;
       while (bpm > style.bpm[1] + 20 && bpm / 2 >= 50) bpm /= 2;
       bpm = Math.round(bpm);
     }
 
-    // Quantiza a melodia para a grade de semicolcheias
-    const t0 = vNotes[0].start;
+    // Quantiza a melodia para a grade de semicolcheias. Com metrônomo, a grade é a
+    // das batidas que a pessoa ouviu (início do compasso = 1ª batida após a contagem).
     const stepSec = 60 / bpm / 4;
+    let t0 = vNotes[0].start;
+    if (grid) {
+      t0 = grid.offset;
+      // se começou a cantar antes do "1" (anacruse), recua um compasso inteiro
+      while (vNotes[0].start < t0 - stepSec / 2) t0 -= stepSec * 16;
+    }
     let mel = [];
     for (const n of vNotes) {
-      const step = Math.round((n.start - t0) / stepSec);
+      const step = Math.max(0, Math.round((n.start - t0) / stepSec));
       const dur = Math.max(1, Math.round(n.dur / stepSec));
       const last = mel[mel.length - 1];
       if (last && step <= last.step) continue;

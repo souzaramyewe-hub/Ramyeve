@@ -90,7 +90,9 @@
 
   function init() {
     initLook();
+    initRhythm();
     initEngine();
+    initCloneAi();
     if (window.claude) $('envNote').classList.remove('hidden'); // página publicada no Claude
     const ex = $('examples');
     EXAMPLES.forEach((t) => {
@@ -311,6 +313,186 @@
     return state.ctx;
   }
 
+  /* ---------------- voz real com IA (Seed-VC) ---------------- */
+
+  function currentToken() { return ($('hfToken').value || $('hfToken2').value || '').trim(); }
+
+  /* qualquer áudio -> WAV mono 22 kHz (até 30 s), formato que o servidor aceita bem */
+  async function toWavBlob(buffer, maxSec) {
+    const sr = 22050;
+    const len = Math.ceil(Math.min(buffer.duration, maxSec || 1e9) * sr);
+    const ctx = new OfflineAudioContext(1, Math.max(1, len), sr);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.start();
+    const out = await ctx.startRendering();
+    const L = out.getChannelData(0);
+    return Formats.wav({ L, R: L, sr }, 16);
+  }
+
+  async function setRef(blobOrFile) {
+    const buf = await audioCtx().decodeAudioData(await blobOrFile.arrayBuffer());
+    if (buf.duration < 5) throw new Error('A amostra ficou curta (' + buf.duration.toFixed(0) + ' s). Grave pelo menos 10 segundos.');
+    const wav = await toWavBlob(buf, 30);
+    state.refBlob = wav;
+    try { await VoiceClone.saveRef(wav); } catch (e) { /* sem armazenamento */ }
+    updateRefUI(Math.min(30, buf.duration));
+  }
+
+  function updateRefUI(sec) {
+    const has = !!state.refBlob;
+    $('btnRefDel').classList.toggle('hidden', !has);
+    $('refPreview').classList.toggle('hidden', !has);
+    if (has) $('refPreview').src = URL.createObjectURL(state.refBlob);
+    $('refStatus').textContent = has ? '✅ Amostra da sua voz guardada' + (sec ? ' (' + Math.round(sec) + ' s)' : '') + '. Marque a opção abaixo para usar.' : 'Nenhuma amostra da sua voz ainda.';
+    if (has && AIMusic.available() && sec) { $('cloneAi').checked = true; syncCloneAi(); }
+  }
+
+  function syncCloneAi() {
+    $('hfBox2').classList.toggle('hidden', !$('cloneAi').checked);
+    if ($('cloneAi').checked && !state.refBlob) $('refStatus').textContent = '👆 Primeiro grave ou envie uma amostra da sua voz.';
+  }
+
+  let refRec = null;
+  async function recordRef() {
+    if (refRec) { refRec.stop(); return; }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
+    } catch (e) {
+      $('refStatus').textContent = '⚠️ O microfone não está disponível aqui. Grave no celular (gravador de voz ou WhatsApp) e use “Enviar áudio”.';
+      return;
+    }
+    const mr = new MediaRecorder(stream);
+    const chunks = [];
+    const t0 = performance.now();
+    const timer = setInterval(() => {
+      const s = (performance.now() - t0) / 1000;
+      $('btnRefRec').textContent = '■ Parar (' + Math.max(0, Math.ceil(20 - s)) + ' s)';
+      if (s >= 20 && mr.state === 'recording') mr.stop();
+    }, 200);
+    mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    mr.onstop = async () => {
+      clearInterval(timer);
+      stream.getTracks().forEach((t) => t.stop());
+      refRec = null;
+      $('btnRefRec').classList.remove('rec', 'on');
+      $('btnRefRec').textContent = '🎙️ Gravar minha voz (20 s)';
+      try { await setRef(new Blob(chunks, { type: mr.mimeType || 'audio/webm' })); } catch (e) { $('refStatus').textContent = '⚠️ ' + e.message; }
+    };
+    mr.start();
+    refRec = mr;
+    $('btnRefRec').classList.add('rec', 'on');
+    $('refStatus').textContent = '🔴 Gravando… cante ou fale com naturalidade, perto do microfone.';
+  }
+
+  function initCloneAi() {
+    $('btnRefRec').onclick = recordRef;
+    $('refFileIn').onchange = async (e) => {
+      const f = e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      $('refStatus').textContent = '⏳ Lendo o áudio…';
+      try { await setRef(f); } catch (err) { $('refStatus').textContent = '⚠️ ' + (err.message || 'Não consegui ler esse áudio.'); }
+    };
+    $('btnRefDel').onclick = async () => {
+      try { await VoiceClone.deleteRef(); } catch (e) { /* ok */ }
+      state.refBlob = null; $('cloneAi').checked = false; syncCloneAi(); updateRefUI();
+    };
+    $('cloneAi').onchange = syncCloneAi;
+    // a chave é a mesma nos dois lugares
+    const mirror = (a, b) => $(a).addEventListener('input', () => { $(b).value = $(a).value; });
+    mirror('hfToken', 'hfToken2'); mirror('hfToken2', 'hfToken');
+    $('hfToken2').value = $('hfToken').value;
+    if (!AIMusic.available()) { $('cloneAi').disabled = true; $('cloneAiBlocked').classList.remove('hidden'); }
+    VoiceClone.loadRef().then((b) => { if (b) { state.refBlob = b; updateRefUI(); } });
+  }
+
+  function rememberToken(token) {
+    try { if ($('hfRemember').checked) localStorage.setItem(TOKEN_KEY, token); } catch (e) { /* sem armazenamento */ }
+  }
+
+  /* ---------------- ritmo e metrônomo (aba Cantar) ---------------- */
+
+  const taps = [];
+  let metroPreview = null;
+
+  function voiceBpm() { return Math.max(50, Math.min(200, Math.round(parseFloat($('voiceBpm').value) || 100))); }
+
+  function syncRhythm() {
+    const metro = $('metroOn').checked, man = $('rhythmManual').checked;
+    $('voiceBpm').disabled = !(metro || man);
+    $('bpmMinus').disabled = $('bpmPlus').disabled = !(metro || man);
+    $('rhythmInfo').textContent = metro ? 'metrônomo a ' + voiceBpm() + ' bpm' : man ? voiceBpm() + ' bpm (marcado por você)' : 'detectado sozinho';
+    if (metroPreview) { metroPreview.stop(); metroPreview = startMetro(voiceBpm(), audioCtx().currentTime + 0.05); }
+  }
+
+  /* "tique" do metrônomo: mais agudo no 1º tempo de cada compasso */
+  function click(ctx, time, accent) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = accent ? 1760 : 1175;
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.35 : 0.22, time + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    o.connect(g).connect(ctx.destination);
+    o.start(time); o.stop(time + 0.06);
+  }
+
+  /* Metrônomo com agendamento antecipado (não atrasa mesmo com a página ocupada). */
+  function startMetro(bpm, startAt, onBeat) {
+    const ctx = audioCtx();
+    const beat = 60 / bpm;
+    let i = 0;
+    const timers = [];
+    const schedule = () => {
+      while (startAt + i * beat < ctx.currentTime + 0.2) {
+        const when = startAt + i * beat;
+        click(ctx, when, i % 4 === 0);
+        if (onBeat) { const k = i; timers.push(setTimeout(() => onBeat(k), Math.max(0, (when - ctx.currentTime) * 1000))); }
+        i++;
+      }
+    };
+    schedule();
+    const id = setInterval(schedule, 25);
+    return { stop() { clearInterval(id); timers.forEach(clearTimeout); } };
+  }
+
+  function tap() {
+    const now = performance.now();
+    if (taps.length && now - taps[taps.length - 1] > 2000) taps.length = 0;
+    taps.push(now);
+    if (taps.length > 8) taps.shift();
+    click(audioCtx(), audioCtx().currentTime, false);
+    $('btnTap').classList.add('hit');
+    setTimeout(() => $('btnTap').classList.remove('hit'), 90);
+    if (taps.length < 2) { $('rhythmInfo').textContent = 'continue tocando no ritmo…'; return; }
+    const avg = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
+    let bpm = 60000 / avg;
+    while (bpm < 50) bpm *= 2;
+    while (bpm > 200) bpm /= 2;
+    $('voiceBpm').value = Math.round(bpm);
+    $('rhythmManual').checked = true;
+    syncRhythm();
+  }
+
+  function initRhythm() {
+    $('btnTap').addEventListener('pointerdown', (e) => { e.preventDefault(); tap(); });
+    $('btnTap').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(); } });
+    $('bpmMinus').onclick = () => { $('voiceBpm').value = voiceBpm() - 1; syncRhythm(); };
+    $('bpmPlus').onclick = () => { $('voiceBpm').value = voiceBpm() + 1; syncRhythm(); };
+    $('voiceBpm').addEventListener('change', () => { $('voiceBpm').value = voiceBpm(); syncRhythm(); });
+    $('rhythmManual').onchange = syncRhythm;
+    $('metroOn').onchange = syncRhythm;
+    $('btnMetroTest').onclick = () => {
+      if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir o metrônomo'; return; }
+      metroPreview = startMetro(voiceBpm(), audioCtx().currentTime + 0.05);
+      $('btnMetroTest').textContent = '■ Parar o metrônomo';
+    };
+    syncRhythm();
+  }
+
   /* ---------------- gravação de voz ---------------- */
 
   let rec = null;
@@ -342,8 +524,28 @@
       $('recTime').textContent = fmt(s);
       raf = requestAnimationFrame(tick);
     };
+    // metrônomo: 4 batidas de contagem e depois continua marcando o ritmo
+    let metro = null, grid = null, recStartCtx = null;
+    if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir o metrônomo'; }
+    const useMetro = $('metroOn').checked;
+    const bpm = voiceBpm();
+    const metroStart = ctx.currentTime + 0.3;
+    mr.onstart = () => { recStartCtx = ctx.currentTime; };
+    if (useMetro) {
+      $('countIn').classList.remove('hidden');
+      metro = startMetro(bpm, metroStart, (k) => {
+        if (k < 4) $('countIn').textContent = String(k + 1);
+        else if (k === 4) { $('countIn').textContent = '🎤 Cante!'; setStatus('Gravando… cante no ritmo do metrônomo e clique em Parar.'); }
+        else if (k === 8) $('countIn').classList.add('hidden');
+      });
+    }
     mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     mr.onstop = async () => {
+      if (metro) metro.stop();
+      $('countIn').classList.add('hidden');
+      // grade do ritmo na linha do tempo da gravação: o "1" vem depois das 4 batidas de contagem
+      if (useMetro && recStartCtx != null) grid = { bpm, offset: Math.max(0, metroStart - recStartCtx) + 4 * 60 / bpm };
+      state.nextGrid = grid;
       cancelAnimationFrame(raf);
       stream.getTracks().forEach((t) => t.stop());
       srcNode.disconnect();
@@ -359,7 +561,7 @@
     tick();
     $('btnRec').classList.add('on');
     $('btnRec').textContent = '■ Parar';
-    setStatus('Gravando… cante sua melodia e clique em Parar.');
+    setStatus(useMetro ? 'Ouça a contagem: 1, 2, 3, 4… e cante!' : 'Gravando… cante sua melodia e clique em Parar.');
   }
 
   async function loadVoiceFile(file) {
@@ -381,6 +583,8 @@
   }
 
   async function setVoice(buffer) {
+    state.voiceGrid = state.nextGrid || null; // áudio enviado por arquivo não tem grade
+    state.nextGrid = null;
     const res = await Pitch.analyze(buffer, (p) => setStatus('Analisando as notas da sua voz… ' + Math.round(p * 100) + '%'));
     state.voiceBuffer = buffer;
     state.voiceNotes = res.notes;
@@ -484,7 +688,11 @@
           setStatus('Grave ou envie um trecho cantado primeiro.', true);
           return;
         }
-        song = Composer.composeFromVoice(Object.assign({ notes: state.voiceNotes, prompt: $('voicePrompt').value.trim(), lyrics: $('lyrics').value.trim() }, common));
+        const manualBpm = $('rhythmManual').checked || ($('metroOn').checked && state.voiceGrid) ? voiceBpm() : common.bpm;
+        song = Composer.composeFromVoice(Object.assign({}, common, {
+          notes: state.voiceNotes, prompt: $('voicePrompt').value.trim(), lyrics: $('lyrics').value.trim(),
+          bpm: state.voiceGrid ? state.voiceGrid.bpm : manualBpm, grid: state.voiceGrid,
+        }));
       }
     } catch (e) {
       console.error(e);
@@ -510,6 +718,27 @@
           vocalBuffer = VoiceClone.renderSinging(sung, profile, totalSec);
           song.singer = profile.name;
         }
+      }
+      if (vocalBuffer && $('cloneAi').checked && AIMusic.available()) {
+        const token = currentToken();
+        if (!state.refBlob) {
+          setStatus('Para cantar com a sua voz real, primeiro grave ou envie uma amostra em “Clonar voz”.', true);
+          return song;
+        }
+        if (!/^hf_/.test(token)) {
+          setStatus('Para cantar com a sua voz real, cole a chave grátis do Hugging Face em “Clonar voz”.', true);
+          return song;
+        }
+        rememberToken(token);
+        try {
+          vocalBuffer = await AIMusic.convertVoice({ source: await toWavBlob(vocalBuffer), reference: state.refBlob, token, onStatus: (t) => setStatus(t) });
+          song.singer = 'Sua voz real (IA)';
+        } catch (e) {
+          console.error(e);
+          setStatus('⚠️ ' + e.message + ' Desta vez usei a voz sintética.', true);
+          await new Promise((r) => setTimeout(r, 2500));
+        }
+        setStatus('Juntando sua voz com os instrumentos… 🎼');
       }
       state.gains.melody = vocalBuffer ? 0.3 : 0.9;
       const render = await Synth.render(song, {

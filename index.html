@@ -45,7 +45,28 @@
       </div>
 
       <div class="panel hidden" id="panel-voz">
-        <p class="muted">Cante, cantarole ou assobie uma melodia, ou envie um áudio. O app encontra as notas, o tom e o ritmo.</p>
+        <p class="muted">Cante, cantarole ou assobie uma melodia, ou envie um áudio. O app encontra as notas e o tom.</p>
+
+        <div class="rhythm" aria-labelledby="rhythmTitle">
+          <div class="field-head"><span id="rhythmTitle" class="rhythm-title">🥁 Ritmo</span><span class="muted small" id="rhythmInfo">detectado sozinho</span></div>
+          <div class="rhythm-row">
+            <label class="check"><input type="checkbox" id="rhythmManual"> Eu marco o ritmo</label>
+            <div class="bpm-box">
+              <button type="button" class="icon-btn" id="bpmMinus" aria-label="Mais devagar">−</button>
+              <input type="number" id="voiceBpm" min="50" max="200" step="1" value="100" inputmode="numeric" aria-label="Batidas por minuto">
+              <span class="muted small">bpm</span>
+              <button type="button" class="icon-btn" id="bpmPlus" aria-label="Mais rápido">+</button>
+            </div>
+          </div>
+          <div class="rhythm-row">
+            <button type="button" class="pill tap" id="btnTap">👆 Toque no ritmo</button>
+            <button type="button" class="pill" id="btnMetroTest">▶ Ouvir o metrônomo</button>
+          </div>
+          <label class="check"><input type="checkbox" id="metroOn" checked> Tocar o metrônomo enquanto eu gravo (com 4 batidas de contagem antes)</label>
+          <p class="muted small">Dica: use fone de ouvido para o "tique" do metrônomo não entrar na gravação.</p>
+        </div>
+
+        <div id="countIn" class="count-in hidden" aria-live="assertive"></div>
         <div class="rec-row">
           <button id="btnRec" class="btn rec">● Gravar</button>
           <label class="btn ghost file">📁 Enviar áudio<input type="file" id="fileIn" accept="audio/*" hidden></label>
@@ -83,6 +104,27 @@
       <!-- painel: voz -->
       <div class="drawer hidden" id="voicePanel">
         <label class="check"><input type="checkbox" id="singOn" checked> Colocar uma voz cantando a letra</label>
+
+        <div class="clone-ai">
+          <span class="drawer-title">🧬 Sua voz real, com IA <span class="badge">recomendado</span></span>
+          <p class="muted small">Grave de 10 a 30 segundos <b>cantando ou falando com naturalidade</b>. A IA troca a voz da música pela sua e mantém a melodia. Grátis, com a chave do Hugging Face.</p>
+          <div class="clone-actions">
+            <button type="button" id="btnRefRec" class="btn">🎙️ Gravar minha voz (20 s)</button>
+            <label class="btn ghost file">📁 Enviar áudio<input type="file" id="refFileIn" accept="audio/*" hidden></label>
+            <button type="button" id="btnRefDel" class="btn ghost hidden">🗑 Apagar</button>
+          </div>
+          <div id="refStatus" class="small muted">Nenhuma amostra da sua voz ainda.</div>
+          <audio id="refPreview" controls class="hidden"></audio>
+          <label class="check"><input type="checkbox" id="cloneAi"> Cantar com a minha voz real (IA)</label>
+          <div id="hfBox2" class="ai-box hidden">
+            <label for="hfToken2">Sua chave grátis do Hugging Face</label>
+            <input type="password" id="hfToken2" placeholder="hf_..." autocomplete="off" spellcheck="false">
+            <span class="muted small">É a mesma chave de Ajustes → IA. Como conseguir: crie uma conta grátis em huggingface.co, abra huggingface.co/settings/tokens, crie um token do tipo <b>Read</b> e cole aqui.</span>
+          </div>
+          <p id="cloneAiBlocked" class="muted small hidden">Indisponível nesta versão de teste, que bloqueia conexões com outros sites. Funciona na versão completa (GitHub Pages).</p>
+        </div>
+
+        <span class="drawer-title">Clonagem rápida, no navegador <span class="muted small">(menos realista)</span></span>
         <div class="clone-box">
           <div class="clone-status"><span id="cloneStatus">Nenhuma voz clonada ainda.</span></div>
           <div class="clone-actions">
