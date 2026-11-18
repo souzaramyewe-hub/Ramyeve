@@ -140,7 +140,7 @@
     }
     const STOP = ['de', 'da', 'do', 'das', 'dos', 'em', 'com', 'para', 'pra', 'uma', 'um', 'sobre', 'que', 'no', 'na', 'nos', 'nas', 'e', 'o', 'a', 'os', 'as', 'musica', 'maior', 'menor', 'bpm', 'estilo', 'tipo', 'quero', 'faca', 'crie'];
     const words = (prompt || '').replace(/[^\p{L}\s]/gu, ' ').split(/\s+/)
-      .filter((w) => w.length > 1 && !STOP.includes(normalize(w))).slice(0, 3);
+      .filter((w) => w.length > 1 && !STOP.includes(normalize(w))).slice(0, 4);
     if (words.length) return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     return 'Minha música ' + style.name;
   }

@@ -116,13 +116,42 @@
     return new Blob([new Uint8Array(all)], { type: 'audio/midi' });
   }
 
-  function download(blob, filename) {
+  /*
+   * Entrega o arquivo ao usuário. Num navegador comum, baixa direto.
+   * Dentro de uma página publicada no Claude (Artifact), usa o recurso
+   * "downloads" da plataforma; como ela só aceita alguns tipos de arquivo,
+   * áudios e MIDI vão dentro de um .zip.
+   * Retorna o nome final do arquivo, ou null se o usuário cancelou.
+   */
+  const ARTIFACT_OK = ['zip', 'txt', 'json', 'md', 'csv', 'pdf', 'html', 'svg', 'png', 'jpg', 'webm', 'mp4'];
+  async function download(blob, filename) {
+    const claude = global.claude;
+    if (claude && typeof claude.use === 'function') {
+      let d = null;
+      try { d = await claude.use('downloads'); } catch (e) { d = null; }
+      if (d) {
+        const ext = (filename.split('.').pop() || '').toLowerCase();
+        let data = blob, name = filename;
+        if (!ARTIFACT_OK.includes(ext)) {
+          data = await global.Formats.zip([{ name: filename, blob }]);
+          name = filename + '.zip';
+        }
+        try {
+          await d.save({ filename: name, data });
+          return name;
+        } catch (e) {
+          if (e && e.code === 'declined') return null;
+          throw new Error(e && e.message ? e.message : 'download indisponível');
+        }
+      }
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    return filename;
   }
 
   global.Exporter = { mixStems, toWav, toMidi, download };

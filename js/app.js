@@ -40,6 +40,7 @@
   /* ---------------- inicialização ---------------- */
 
   function init() {
+    if (window.claude) $('envNote').classList.remove('hidden'); // página publicada no Claude
     const ex = $('examples');
     EXAMPLES.forEach((t) => {
       const b = document.createElement('button');
@@ -82,9 +83,18 @@
     $('btnClone').onclick = startClone;
     $('btnCancelClone').onclick = () => { if (cloneRec) { cloneRec.cancelled = true; cloneRec.mr.stop(); } };
     $('btnDemo').onclick = playDemo;
+    let delArmed = 0;
     $('btnDelClone').onclick = async () => {
-      if (!confirm('Apagar a voz clonada deste aparelho?')) return;
-      await VoiceClone.deleteProfile();
+      // confirmação na própria página: o 1º clique pede, o 2º apaga
+      if (Date.now() - delArmed > 4000) {
+        delArmed = Date.now();
+        $('btnDelClone').textContent = '⚠️ Clique de novo para apagar';
+        setTimeout(() => { if (Date.now() - delArmed >= 4000) $('btnDelClone').textContent = '🗑 Apagar'; }, 4100);
+        return;
+      }
+      delArmed = 0;
+      $('btnDelClone').textContent = '🗑 Apagar';
+      try { await VoiceClone.deleteProfile(); } catch (e) { /* armazenamento indisponível */ }
       state.cloneProfile = null;
       updateCloneUI();
     };
@@ -125,7 +135,7 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     } catch (e) {
-      $('cloneStatus').textContent = '⚠️ Não foi possível acessar o microfone. Permita o acesso e tente de novo.';
+      $('cloneStatus').textContent = window.claude ? '⚠️ Nesta versão de teste o navegador não libera o microfone. Para clonar a voz, use a versão completa do site (GitHub Pages).' : '⚠️ Não foi possível acessar o microfone. Permita o acesso (ícone de cadeado ao lado do endereço) e tente de novo.';
       return;
     }
     stop();
@@ -229,7 +239,7 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (e) {
-      setStatus('Não foi possível acessar o microfone. Permita o acesso ou envie um arquivo de áudio.', true);
+      setStatus('O microfone não está disponível aqui. Permita o acesso ao microfone (ícone de cadeado ao lado do endereço) ou use “Enviar áudio”.', true);
       return;
     }
     const ctx = audioCtx();
@@ -622,8 +632,8 @@
     btn.disabled = true;
     try {
       if (f === 'midi') {
-        Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
-        status('');
+        const got = await Exporter.download(Exporter.toMidi(state.song), fileName('mid'));
+        status(got ? '✅ Pronto: ' + got : 'Download cancelado.');
         return;
       }
       status('Mixando…');
@@ -655,8 +665,8 @@
         blob = await Formats.zip(files);
         ext = 'zip';
       }
-      Exporter.download(blob, fileName(ext));
-      status('✅ Pronto: ' + fileName(ext) + ' (' + fmtBytes(blob.size) + ')');
+      const got = await Exporter.download(blob, fileName(ext));
+      status(got ? '✅ Pronto: ' + got + ' (' + fmtBytes(blob.size) + ')' : 'Download cancelado.');
     } catch (e) {
       console.error(e);
       status('⚠️ Erro ao converter: ' + e.message);

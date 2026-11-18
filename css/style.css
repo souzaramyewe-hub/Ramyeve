@@ -12,7 +12,7 @@
   --shadow: 0 6px 24px rgba(40, 20, 90, 0.08);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #14111f;
     --card: #1e1a2e;
     --text: #efecf8;
@@ -24,7 +24,22 @@
     --roll-bg: #17142a;
     --roll-grid: #262140;
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #14111f;
+  --card: #1e1a2e;
+  --text: #efecf8;
+  --muted: #a49fbc;
+  --line: #322c48;
+  --accent: #9a80ff;
+  --accent-2: #ff6f98;
+  --accent-soft: #2b2447;
+  --roll-bg: #17142a;
+  --roll-grid: #262140;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -51,6 +66,7 @@ main { max-width: 920px; margin: 0 auto; padding: 8px 16px; }
   padding: 20px; margin: 16px 0; box-shadow: var(--shadow);
 }
 .hidden { display: none !important; }
+.env-note { background: var(--accent-soft); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 16px 0 0; font-size: .92rem; }
 .muted { color: var(--muted); font-weight: normal; }
 .mono { font-variant-numeric: tabular-nums; }
 
