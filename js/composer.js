@@ -613,6 +613,16 @@
       }
       bar += bars;
     });
+    // Letra: as sílabas são encaixadas, em ordem, nas notas que a pessoa cantou.
+    const syls = [].concat(...global.TextAnalyzer.lyricsToStanzas(o.lyrics || '').map((st) => [].concat(...st)));
+    if (syls.length) {
+      let k = 0;
+      for (const n of song.parts.lead) {
+        n.syl = syls[k % syls.length];
+        k++;
+      }
+      song.lyricsFit = { syllables: syls.length, notes: mel.length };
+    }
     // Na variação, a melodia é dobrada uma oitava acima com outro timbre.
     if (withVariation) {
       song.parts.lead2 = mel.map((n) => ({ step: (introBars + melBars) * SPB + n.step, dur: n.dur, midi: n.midi + 12, vel: 0.5 }));

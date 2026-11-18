@@ -79,6 +79,15 @@
     $('btnDownload').onclick = downloadSelected;
     $('fmtSel').onchange = updateSizeHint;
     window.addEventListener('resize', drawRoll);
+    $('btnLyricsExample').onclick = () => {
+      $('lyrics').value = 'Olha o sol nascendo lá no mar\nVem comigo, vem dançar\nA onda chega devagar\nE o coração quer cantar\n\nÉ verão, é verão no meu coração\nBatucando sem parar\nÉ verão, é verão, me dá sua mão\nVem comigo festejar';
+      $('lyrics').focus();
+    };
+    let lyricsTouched = false;
+    $('lyrics').addEventListener('input', () => {
+      // na aba de voz, ao escrever uma letra, a gravação original sai da mixagem (para não cantar duas vezes)
+      if (state.tab === 'voz' && !lyricsTouched && $('lyrics').value.trim()) { $('includeVoice').checked = false; lyricsTouched = true; }
+    });
     $('lenSel').onchange = () => $('minutesWrap').classList.toggle('hidden', $('lenSel').value !== 'custom');
     $('btnClone').onclick = startClone;
     $('btnCancelClone').onclick = () => { if (cloneRec) { cloneRec.cancelled = true; cloneRec.mr.stop(); } };
@@ -215,6 +224,9 @@
     });
     $('panel-texto').classList.toggle('hidden', tab !== 'texto');
     $('panel-voz').classList.toggle('hidden', tab !== 'voz');
+    $('lyricsHint').innerHTML = tab === 'voz'
+      ? 'Escreva a letra que combina com a melodia que você cantou. As sílabas são encaixadas, em ordem, nas notas detectadas, e a voz escolhida abaixo canta a letra.'
+      : 'Escreva a letra aqui, uma frase por linha. Deixe uma <b>linha em branco</b> entre o verso e o refrão. A melodia vai seguir as sílabas da letra.';
   }
 
   function setStatus(msg, err) {
@@ -344,7 +356,7 @@
           setStatus('Grave ou envie um trecho cantado primeiro.', true);
           return;
         }
-        song = Composer.composeFromVoice(Object.assign({ notes: state.voiceNotes, prompt: $('voicePrompt').value.trim() }, common));
+        song = Composer.composeFromVoice(Object.assign({ notes: state.voiceNotes, prompt: $('voicePrompt').value.trim(), lyrics: $('lyrics').value.trim() }, common));
       }
     } catch (e) {
       console.error(e);
@@ -358,7 +370,8 @@
       const voiceBuffer = state.tab === 'voz' && $('includeVoice').checked ? state.voiceBuffer : null;
       let vocalBuffer = null;
       song.singer = null;
-      if (state.tab === 'texto' && $('singOn').checked) {
+      const hasLyrics = !!$('lyrics').value.trim();
+      if ($('singOn').checked && (state.tab === 'texto' || hasLyrics)) {
         setStatus('Ensinando a voz a cantar a letra… 🎙️');
         await new Promise((r) => setTimeout(r, 30));
         const profile = singerProfile();
@@ -400,7 +413,10 @@
       '🎼 ' + MT.keyName(s.key, s.mode),
       '⏱ ' + s.bpm + ' bpm',
       '⌛ ' + fmt(state.render.duration),
-    ].concat(s.singer ? ['🎙️ ' + s.singer] : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
+    ].concat(s.singer ? ['🎙️ ' + s.singer] : [])
+      .concat(s.lyricsFit && s.lyricsFit.syllables !== s.lyricsFit.notes
+        ? ['📝 ' + s.lyricsFit.syllables + ' sílabas para ' + s.lyricsFit.notes + ' notas' + (s.lyricsFit.syllables < s.lyricsFit.notes ? ' (a letra se repete)' : ' (sobrou letra)')]
+        : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
     $('songTags').innerHTML = '';
     tags.forEach((t) => { const e = document.createElement('span'); e.className = 'tag'; e.textContent = t; $('songTags').appendChild(e); });
 

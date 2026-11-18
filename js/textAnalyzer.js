@@ -201,5 +201,5 @@
     };
   }
 
-  global.TextAnalyzer = { analyze, normalize, syllabify };
+  global.TextAnalyzer = { analyze, normalize, syllabify, lyricsToStanzas };
 })(window);

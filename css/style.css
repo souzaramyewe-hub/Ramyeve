@@ -112,6 +112,11 @@ audio { width: 100%; margin: 6px 0; }
 .voice-info { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: .9rem; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 
+.lyrics-box { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.lyrics-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lyrics-head h2 { font-size: 1.1rem; margin: 0; }
+.lyrics-box .hint { margin: 6px 0 8px; }
+#lyrics { min-height: 9em; border: 2px solid var(--accent); background: var(--card); }
 .vocal { border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 12px; margin: 16px 0 0; }
 .vocal legend { font-weight: 700; padding: 0 6px; }
 .small { font-size: .82rem; margin: 10px 0 0; }
