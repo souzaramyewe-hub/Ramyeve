@@ -40,7 +40,56 @@
 
   /* ---------------- inicialização ---------------- */
 
+  /* ---------------- visual "app de música" ---------------- */
+
+  const QUICK_STYLES = [['rock', 'Rock'], ['samba', 'Samba'], ['forro', 'Forró'], ['pop', 'Pop'], ['sertanejo', 'Sertanejo'],
+    ['funkbr', 'Funk'], ['gospel', 'Gospel'], ['lofi', 'Lo-fi'], ['reggae', 'Reggae'], ['trap', 'Trap'], ['bossa', 'Bossa nova'], ['balada', 'Balada']];
+  const COVER = {
+    rock: ['#ff5a36', '#3b0d0d'], metal: ['#8a8a8a', '#120c0c'], samba: ['#ffcf3f', '#e8501f'], bossa: ['#3fb6c9', '#16324f'],
+    forro: ['#ffb547', '#b5482a'], sertanejo: ['#e9a65b', '#5b3a1f'], funkbr: ['#ff3fa4', '#2b0a3d'], reggae: ['#3ccf6d', '#d9a21b'],
+    reggaeton: ['#ff6a3d', '#5a1a7a'], jazz: ['#c99a4a', '#1f1a33'], blues: ['#3f6bff', '#0d1640'], lofi: ['#c8a2ff', '#2e2a4f'],
+    trap: ['#7a3cff', '#0b0b12'], house: ['#00d0ff', '#4b1aff'], techno: ['#9cff57', '#0f1f0f'], gospel: ['#ffe08a', '#c06a2b'],
+    balada: ['#ff7a9c', '#4a1630'], classica: ['#d9c7a3', '#3a2f22'], ambient: ['#7fd7ff', '#1d2b4a'], pop: ['#ff7a45', '#7a3cff'],
+  };
+
+  function initLook() {
+    const box = $('styleChips');
+    QUICK_STYLES.forEach(([id, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'style-chip'; b.textContent = label;
+      b.setAttribute('aria-pressed', 'false');
+      b.onclick = () => {
+        const on = $('styleSel').value !== id;
+        $('styleSel').value = on ? id : 'auto';
+        syncStyleChips();
+      };
+      b.dataset.style = id;
+      box.appendChild(b);
+    });
+    $('styleSel').addEventListener('change', syncStyleChips);
+    const drawer = (btn, panel) => {
+      $(btn).onclick = () => {
+        const open = $(panel).classList.contains('hidden');
+        $(panel).classList.toggle('hidden', !open);
+        $(btn).setAttribute('aria-expanded', open);
+      };
+    };
+    drawer('openVoice', 'voicePanel');
+    drawer('openAdv', 'advPanel');
+  }
+
+  function syncStyleChips() {
+    document.querySelectorAll('.style-chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === $('styleSel').value)));
+  }
+
+  function paintCover(song) {
+    const c = COVER[song.style.id] || COVER.pop;
+    $('cover').style.background = 'radial-gradient(circle at 30% 25%, rgba(255,255,255,.25), transparent 45%), linear-gradient(135deg, ' + c[0] + ', ' + c[1] + ')';
+    $('coverEmoji').textContent = song.style.emoji || '🎵';
+  }
+
   function init() {
+    initLook();
     initEngine();
     if (window.claude) $('envNote').classList.remove('hidden'); // página publicada no Claude
     const ex = $('examples');
@@ -146,7 +195,8 @@
     const p = state.cloneProfile;
     const opt = $('singerSel').querySelector('option[value=clone]');
     opt.disabled = !p;
-    opt.textContent = p ? '🧬 Minha voz clonada' : '🧬 Minha voz clonada (clone sua voz abaixo)';
+    opt.textContent = p ? 'Minha voz clonada' : 'Minha voz (clone antes)';
+    $('openVoice').textContent = p ? '🧬 Minha voz' : '🧬 Clonar voz';
     if (!p && $('singerSel').value === 'clone') $('singerSel').value = 'fem';
     $('btnDelClone').classList.toggle('hidden', !p);
     $('btnClone').textContent = p ? '🔁 Clonar de novo' : '🧬 Clonar minha voz';
@@ -496,6 +546,7 @@
       .concat(s.lyricsFit && s.lyricsFit.reps > 1
         ? ['📝 sua melodia tocada ' + s.lyricsFit.reps + 'x para caber a letra inteira']
         : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
+    paintCover(s);
     if (state.render.ai) tags.splice(1, 0, '🤖 Gerada por IA (ACE-Step)');
     $('roll').parentElement.classList.toggle('hidden', !!state.render.ai);
     $('songTags').innerHTML = '';

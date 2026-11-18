@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ramyeve Música</title>
   <meta name="description" content="Crie músicas de qualquer estilo a partir de um texto ou de um trecho cantado.">
-  <meta name="theme-color" content="#0f1420">
+  <meta name="theme-color" content="#0b0b12">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e0492f'/><g fill='white'><rect x='7' y='12' width='3' height='8' rx='1.5'/><rect x='12' y='7' width='3' height='18' rx='1.5'/><rect x='17' y='10' width='3' height='12' rx='1.5'/><rect x='22' y='14' width='3' height='4' rx='1.5'/></g></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,215 +14,215 @@
 </head>
 <body>
   <header class="top">
-    <div class="wrap brand">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><g><rect x="7" y="12" width="3" height="8" rx="1.5"/><rect x="12" y="7" width="3" height="18" rx="1.5"/><rect x="17" y="10" width="3" height="12" rx="1.5"/><rect x="22" y="14" width="3" height="4" rx="1.5"/></g></svg>
-      <div>
-        <h1>Ramyeve Música</h1>
-        <p>Do texto ou da sua voz para uma música completa, em qualquer estilo.</p>
+    <div class="wrap top-row">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><g><rect x="7" y="12" width="3" height="8" rx="1.5"/><rect x="12" y="7" width="3" height="18" rx="1.5"/><rect x="17" y="10" width="3" height="12" rx="1.5"/><rect x="22" y="14" width="3" height="4" rx="1.5"/></g></svg>
+        <span class="brand-name">Ramyeve</span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Como criar">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="texto">✍️ Escrever</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="voz">🎤 Cantar</button>
       </div>
     </div>
   </header>
 
   <main class="wrap">
     <div id="envNote" class="env-note hidden" role="note">
-      <b>Versão de teste.</b> Aqui o navegador bloqueia o microfone: gravar e clonar pelo microfone só funcionam na versão completa do site.
-      Você pode criar por texto, ouvir as vozes cantando, enviar áudios (inclusive para clonar sua voz) e baixar — os arquivos chegam dentro de um .zip.
+      <b>Versão de teste:</b> aqui o microfone fica bloqueado. Você pode criar escrevendo, enviar áudios (inclusive para clonar a voz) e baixar (os arquivos chegam num .zip).
     </div>
 
-    <div class="studio">
-      <div class="steps">
-        <!-- 1. Ideia -->
-        <section class="step" aria-labelledby="st1">
-          <header class="step-head"><span class="num">1</span><h2 id="st1">Ideia da música</h2></header>
-          <div class="tabs" role="tablist">
-            <button class="tab active" role="tab" aria-selected="true" data-tab="texto">✍️ Por texto</button>
-            <button class="tab" role="tab" aria-selected="false" data-tab="voz">🎤 Pela minha voz</button>
-          </div>
+    <section class="composer" aria-labelledby="hello">
+      <h1 id="hello">Que música você quer criar?</h1>
 
-          <div class="panel" id="panel-texto">
-            <label for="prompt">Descreva a música</label>
-            <textarea id="prompt" rows="3" placeholder="Ex.: um samba alegre sobre o verão no Rio, com flauta, 100 bpm"></textarea>
-            <div class="chips" id="examples" aria-label="Exemplos"></div>
-          </div>
-
-          <div class="panel hidden" id="panel-voz">
-            <p class="muted">Cante, cantarole ou assobie uma melodia, sem limite de tempo, ou envie um áudio. O app encontra as notas, o tom e o andamento.</p>
-            <div class="rec-row">
-              <button id="btnRec" class="btn rec">● Gravar</button>
-              <label class="btn ghost file">📁 Enviar áudio<input type="file" id="fileIn" accept="audio/*" hidden></label>
-              <span id="recTime" class="muted mono">00:00</span>
-              <div class="meter"><div id="meterBar"></div></div>
-            </div>
-            <audio id="recPreview" controls class="hidden"></audio>
-            <div id="voiceInfo" class="voice-info hidden"></div>
-            <label for="voicePrompt">Estilo desejado</label>
-            <textarea id="voicePrompt" rows="2" placeholder="Ex.: forró animado com sanfona"></textarea>
-            <label class="check"><input type="checkbox" id="includeVoice" checked> Incluir minha gravação original na música</label>
-          </div>
-        </section>
-
-        <!-- 2. Letra -->
-        <section class="step lyrics-box" aria-labelledby="lyricsTitle">
-          <header class="step-head">
-            <span class="num">2</span><h2 id="lyricsTitle">Letra <span class="muted opt">opcional</span></h2>
-            <button type="button" id="btnLyricsExample" class="chip">Usar letra de exemplo</button>
-          </header>
-          <p class="muted small hint" id="lyricsHint">Uma frase por linha. Deixe uma <b>linha em branco</b> entre o verso e o refrão. A melodia segue as sílabas, e a música dura o tamanho da letra.</p>
-          <textarea id="lyrics" rows="8" placeholder="Escreva aqui a letra da sua música…"></textarea>
-        </section>
-
-        <!-- 3. Voz -->
-        <section class="step vocal" aria-labelledby="st3">
-          <header class="step-head"><span class="num">3</span><h2 id="st3">Voz cantando</h2></header>
-          <label class="check"><input type="checkbox" id="singOn" checked> Colocar uma voz cantando a letra</label>
-          <label for="singerSel">Quem canta</label>
-          <select id="singerSel">
-            <option value="clone" disabled>🧬 Minha voz clonada (clone abaixo)</option>
-            <option value="fem" selected>Voz sintética feminina</option>
-            <option value="masc">Voz sintética masculina</option>
-          </select>
-          <p class="muted small">Só a voz escolhida canta. Depois de clonar, “Minha voz clonada” fica escolhida sozinha.</p>
-
-          <div class="clone-box">
-            <div class="clone-status"><span id="cloneStatus">Nenhuma voz clonada ainda.</span></div>
-            <div class="clone-actions">
-              <button type="button" id="btnClone" class="btn">🧬 Clonar minha voz</button>
-              <button type="button" id="btnDemo" class="btn ghost">▶ Ouvir a voz</button>
-              <button type="button" id="btnDelClone" class="btn ghost hidden">🗑 Apagar</button>
-            </div>
-            <details class="clone-upload" id="cloneUploadBox">
-              <summary>Sem microfone aqui? Clone com um áudio gravado no celular</summary>
-              <ol class="small">
-                <li>Abra o <b>gravador de voz</b> do celular (ou grave um áudio no WhatsApp para você mesmo).</li>
-                <li>Cante, em ordem: <b>“aaaa”</b> · pausa · <b>“éééé”</b> · pausa · <b>“iiii”</b> · pausa · <b>“óóóó”</b> · pausa · <b>“uuuu”</b>. Uns 2 segundos cada, sempre na mesma nota, sem música de fundo.</li>
-                <li>Toque no botão abaixo e escolha esse áudio.</li>
-              </ol>
-              <label class="btn ghost file">📁 Enviar gravação das vogais<input type="file" id="cloneFileIn" accept="audio/*" hidden></label>
-            </details>
-            <div id="cloneWizard" class="wizard hidden" aria-live="polite">
-              <p class="muted">Cante cada vogal de forma <b>contínua e afinada</b>, numa nota confortável, quando ela aparecer.</p>
-              <div class="vowel-row" id="vowelRow"></div>
-              <div class="big-vowel" id="bigVowel">Prepare-se…</div>
-              <div class="meter"><div id="cloneProgress"></div></div>
-              <button type="button" id="btnCancelClone" class="btn ghost">Cancelar</button>
-            </div>
-          </div>
-          <p class="muted small">Sua voz fica guardada só neste aparelho. Use apenas a sua voz ou de quem autorizou.</p>
-        </section>
+      <div class="panel" id="panel-texto">
+        <label for="prompt" class="sr-only">Descreva a música</label>
+        <textarea id="prompt" rows="2" placeholder="Ex.: rock sobre liberdade na estrada"></textarea>
+        <div class="styles" id="styleChips" aria-label="Estilos"></div>
+        <details class="ideas">
+          <summary>Sem ideias? Veja exemplos</summary>
+          <div class="chips" id="examples" aria-label="Exemplos"></div>
+        </details>
       </div>
 
-      <!-- 4. Ajustes + gerar -->
-      <aside class="console" aria-labelledby="st4">
-        <section class="step engine" aria-labelledby="stq">
-          <header class="step-head"><span class="num">★</span><h2 id="stq">Qualidade</h2></header>
+      <div class="panel hidden" id="panel-voz">
+        <p class="muted">Cante, cantarole ou assobie uma melodia, ou envie um áudio. O app encontra as notas, o tom e o ritmo.</p>
+        <div class="rec-row">
+          <button id="btnRec" class="btn rec">● Gravar</button>
+          <label class="btn ghost file">📁 Enviar áudio<input type="file" id="fileIn" accept="audio/*" hidden></label>
+          <span id="recTime" class="muted mono">00:00</span>
+          <div class="meter"><div id="meterBar"></div></div>
+        </div>
+        <audio id="recPreview" controls class="hidden"></audio>
+        <div id="voiceInfo" class="voice-info hidden"></div>
+        <label for="voicePrompt" class="sr-only">Estilo desejado</label>
+        <textarea id="voicePrompt" rows="1" placeholder="Estilo desejado. Ex.: rock pesado"></textarea>
+        <label class="check"><input type="checkbox" id="includeVoice" checked> Incluir minha gravação original</label>
+      </div>
+
+      <div class="lyrics-box">
+        <div class="field-head">
+          <label for="lyrics" id="lyricsTitle">Letra <span class="muted">(opcional)</span></label>
+          <button type="button" id="btnLyricsExample" class="link">Usar letra de exemplo</button>
+        </div>
+        <textarea id="lyrics" rows="5" placeholder="Escreva a letra aqui, uma frase por linha. Deixe uma linha em branco entre o verso e o refrão."></textarea>
+        <p class="hint muted small" id="lyricsHint">A melodia segue as sílabas, e a música dura o tamanho da letra.</p>
+      </div>
+
+      <div class="quick-row">
+        <label class="voice-pick" for="singerSel">🎙️
+          <select id="singerSel" aria-label="Quem canta">
+            <option value="clone" disabled>Minha voz clonada</option>
+            <option value="fem" selected>Voz feminina</option>
+            <option value="masc">Voz masculina</option>
+          </select>
+        </label>
+        <button type="button" class="pill" id="openVoice" aria-expanded="false" aria-controls="voicePanel">🧬 Clonar voz</button>
+        <button type="button" class="pill" id="openAdv" aria-expanded="false" aria-controls="advPanel">⚙️ Ajustes</button>
+      </div>
+
+      <!-- painel: voz -->
+      <div class="drawer hidden" id="voicePanel">
+        <label class="check"><input type="checkbox" id="singOn" checked> Colocar uma voz cantando a letra</label>
+        <div class="clone-box">
+          <div class="clone-status"><span id="cloneStatus">Nenhuma voz clonada ainda.</span></div>
+          <div class="clone-actions">
+            <button type="button" id="btnClone" class="btn">🧬 Clonar minha voz</button>
+            <button type="button" id="btnDemo" class="btn ghost">▶ Ouvir a voz</button>
+            <button type="button" id="btnDelClone" class="btn ghost hidden">🗑 Apagar</button>
+          </div>
+          <details class="clone-upload" id="cloneUploadBox">
+            <summary>Sem microfone aqui? Clone com um áudio do celular</summary>
+            <ol class="small">
+              <li>Abra o <b>gravador de voz</b> do celular (ou grave um áudio no WhatsApp para você mesmo).</li>
+              <li>Cante, em ordem: <b>“aaaa”</b> · pausa · <b>“éééé”</b> · pausa · <b>“iiii”</b> · pausa · <b>“óóóó”</b> · pausa · <b>“uuuu”</b>. Uns 2 segundos cada, sempre na mesma nota.</li>
+              <li>Toque no botão abaixo e escolha esse áudio.</li>
+            </ol>
+            <label class="btn ghost file">📁 Enviar gravação das vogais<input type="file" id="cloneFileIn" accept="audio/*" hidden></label>
+          </details>
+          <div id="cloneWizard" class="wizard hidden" aria-live="polite">
+            <p class="muted">Cante cada vogal de forma <b>contínua e afinada</b> quando ela aparecer.</p>
+            <div class="vowel-row" id="vowelRow"></div>
+            <div class="big-vowel" id="bigVowel">Prepare-se…</div>
+            <div class="meter"><div id="cloneProgress"></div></div>
+            <button type="button" id="btnCancelClone" class="btn ghost">Cancelar</button>
+          </div>
+        </div>
+        <p class="muted small">Sua voz fica guardada só neste aparelho. Use apenas a sua voz ou de quem autorizou.</p>
+      </div>
+
+      <!-- painel: ajustes -->
+      <div class="drawer hidden" id="advPanel">
+        <div class="engine">
+          <span class="drawer-title">Qualidade</span>
           <label class="engine-opt"><input type="radio" name="engine" id="engFast" value="fast" checked>
             <span><b>Rápido, no navegador</b><small class="muted">Pronto em segundos. Instrumentos gravados, voz sintética.</small></span></label>
           <label class="engine-opt" id="engAiWrap"><input type="radio" name="engine" id="engAi" value="ai">
-            <span><b>IA com voz realista</b><small class="muted">ACE-Step, grátis. Canta a letra com voz de verdade. Leva de 30 s a 2 min.</small></span></label>
-          <p id="aiBlocked" class="muted small hidden">Indisponível nesta versão de teste, que bloqueia conexões com outros sites. Funciona na versão completa (GitHub Pages).</p>
+            <span><b>IA com voz realista</b><small class="muted">ACE-Step, grátis. Leva de 30 s a 2 min.</small></span></label>
+          <p id="aiBlocked" class="muted small hidden">Indisponível nesta versão de teste. Funciona na versão completa (GitHub Pages).</p>
           <div id="aiBox" class="ai-box hidden">
             <label for="hfToken">Sua chave grátis do Hugging Face</label>
             <input type="password" id="hfToken" placeholder="hf_..." autocomplete="off" spellcheck="false">
             <label class="check small"><input type="checkbox" id="hfRemember" checked> Lembrar neste aparelho</label>
             <details class="howto">
-              <summary>Como conseguir a chave grátis (2 minutos)</summary>
+              <summary>Como conseguir a chave grátis</summary>
               <ol class="small">
-                <li>Crie uma conta grátis em <a href="https://huggingface.co/join" target="_blank" rel="noopener">huggingface.co/join</a> e confirme o e-mail.</li>
+                <li>Crie uma conta grátis em <a href="https://huggingface.co/join" target="_blank" rel="noopener">huggingface.co/join</a>.</li>
                 <li>Abra <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.</li>
-                <li>Toque em <b>Create new token</b>, escolha o tipo <b>Read</b>, dê um nome (ex.: ramyeve) e crie.</li>
-                <li>Copie a chave (começa com <b>hf_</b>) e cole no campo acima.</li>
+                <li>Toque em <b>Create new token</b>, escolha <b>Read</b> e crie.</li>
+                <li>Copie a chave (começa com <b>hf_</b>) e cole acima.</li>
               </ol>
-              <p class="small muted">A conta grátis dá alguns minutos de IA por dia, o suficiente para algumas músicas. A chave fica só no seu aparelho.</p>
             </details>
           </div>
-        </section>
-        <section class="step">
-          <header class="step-head"><span class="num">4</span><h2 id="st4">Ajustes</h2></header>
-          <div class="grid">
-            <label class="span2">Estilo
-              <select id="styleSel"><option value="auto">Automático (pelo texto)</option></select>
-            </label>
-            <label class="span2">Duração
-              <select id="lenSel">
-                <option value="auto" selected>Pelo tamanho da letra</option>
-                <option value="curta">Curta (~20 s)</option>
-                <option value="media">Média (~1 min)</option>
-                <option value="longa">Longa (~1,5 min)</option>
-                <option value="custom">Escolher minutos…</option>
-              </select>
-            </label>
-            <label id="minutesWrap" class="hidden">Minutos
-              <input type="number" id="minutesIn" min="0.25" step="0.5" value="3" inputmode="decimal">
-            </label>
-            <label>Tom
-              <select id="keySel"><option value="auto">Automático</option></select>
-            </label>
-            <label>Clima
-              <select id="modeSel">
-                <option value="auto">Automático</option>
-                <option value="major">Maior (alegre)</option>
-                <option value="minor">Menor (melancólico)</option>
-              </select>
-            </label>
-            <label class="span2">Andamento: <b id="bpmLabel">automático</b>
-              <input type="range" id="bpmIn" min="0" max="200" step="1" value="0">
-            </label>
-          </div>
-        </section>
-        <div class="gen-bar">
-          <button id="btnGen" class="btn primary big">🎶 Gerar música</button>
-          <div id="status" class="status" role="status"></div>
         </div>
-      </aside>
-    </div>
-
-    <section class="player hidden" id="result" aria-labelledby="songTitle">
-      <div class="player-head">
-        <button id="btnPlay" class="btn primary round" aria-label="Tocar">▶</button>
-        <div class="player-title">
-          <h2 id="songTitle">—</h2>
-          <div class="tags" id="songTags"></div>
-        </div>
-        <button id="btnAgain" class="btn ghost">🔀 Outra versão</button>
-      </div>
-
-      <div class="transport">
-        <button id="btnStop" class="btn ghost round small-round" aria-label="Parar">■</button>
-        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Posição">
-        <span id="timeLabel" class="muted mono">0:00 / 0:00</span>
-      </div>
-
-      <div class="roll-wrap"><canvas id="roll" height="240"></canvas></div>
-
-      <div class="player-foot">
-        <div>
-          <h3 class="sub">Mixer</h3>
-          <div class="mixer" id="mixer"></div>
-        </div>
-        <div class="downloads">
-          <h3 class="sub"><label for="fmtSel">Baixar</label> <span id="fmtSize" class="muted"></span></h3>
-          <div class="dl-row">
-            <select id="fmtSel">
-              <optgroup label="Áudio compactado">
-                <option value="mp3-320">MP3 · 320 kbps (alta qualidade)</option>
-                <option value="mp3-192" selected>MP3 · 192 kbps (recomendado)</option>
-                <option value="mp3-128">MP3 · 128 kbps (arquivo menor)</option>
-              </optgroup>
-              <optgroup label="Áudio sem perdas">
-                <option value="flac">FLAC (sem perdas, menor que WAV)</option>
-                <option value="wav16">WAV · 16 bits (qualidade de CD)</option>
-                <option value="wav24">WAV · 24 bits (estúdio)</option>
-              </optgroup>
-              <optgroup label="Para produtores">
-                <option value="zip">ZIP · faixas separadas + MIDI</option>
-                <option value="midi">MIDI · partitura / notas</option>
-              </optgroup>
+        <div class="grid">
+          <label>Estilo
+            <select id="styleSel"><option value="auto">Automático (pelo texto)</option></select>
+          </label>
+          <label>Duração
+            <select id="lenSel">
+              <option value="auto" selected>Pelo tamanho da letra</option>
+              <option value="curta">Curta (~20 s)</option>
+              <option value="media">Média (~1 min)</option>
+              <option value="longa">Longa (~1,5 min)</option>
+              <option value="custom">Escolher minutos…</option>
             </select>
-            <button id="btnDownload" class="btn">⬇️ Baixar</button>
-          </div>
-          <div id="dlStatus" class="muted small"></div>
+          </label>
+          <label id="minutesWrap" class="hidden">Minutos
+            <input type="number" id="minutesIn" min="0.25" step="0.5" value="3" inputmode="decimal">
+          </label>
+          <label>Tom
+            <select id="keySel"><option value="auto">Automático</option></select>
+          </label>
+          <label>Clima
+            <select id="modeSel">
+              <option value="auto">Automático</option>
+              <option value="major">Maior (alegre)</option>
+              <option value="minor">Menor (melancólico)</option>
+            </select>
+          </label>
+          <label class="span2">Andamento: <b id="bpmLabel">automático</b>
+            <input type="range" id="bpmIn" min="0" max="200" step="1" value="0">
+          </label>
         </div>
       </div>
+
+      <div class="gen-bar">
+        <button id="btnGen" class="btn create">✨ Criar música</button>
+        <div id="status" class="status" role="status"></div>
+      </div>
+    </section>
+
+    <section class="library hidden" id="result" aria-labelledby="libTitle">
+      <h2 id="libTitle" class="lib-title">Sua música</h2>
+      <article class="song">
+        <div class="cover" id="cover" aria-hidden="true"><span id="coverEmoji">🎵</span></div>
+        <div class="song-main">
+          <div class="song-head">
+            <div class="song-title">
+              <h3 id="songTitle">—</h3>
+              <div class="tags" id="songTags"></div>
+            </div>
+            <button id="btnPlay" class="btn play" aria-label="Tocar">▶</button>
+          </div>
+          <div class="roll-wrap"><canvas id="roll" height="120"></canvas></div>
+          <div class="transport">
+            <button id="btnStop" class="icon-btn" aria-label="Parar">■</button>
+            <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Posição">
+            <span id="timeLabel" class="muted mono">0:00 / 0:00</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="song-actions">
+        <button id="btnAgain" class="pill">🔀 Outra versão</button>
+        <div class="dl">
+          <label for="fmtSel" class="sr-only">Formato</label>
+          <select id="fmtSel">
+            <optgroup label="Áudio compactado">
+              <option value="mp3-320">MP3 · 320 kbps</option>
+              <option value="mp3-192" selected>MP3 · 192 kbps (recomendado)</option>
+              <option value="mp3-128">MP3 · 128 kbps</option>
+            </optgroup>
+            <optgroup label="Sem perdas">
+              <option value="flac">FLAC</option>
+              <option value="wav16">WAV · 16 bits</option>
+              <option value="wav24">WAV · 24 bits</option>
+            </optgroup>
+            <optgroup label="Para produtores">
+              <option value="zip">ZIP · faixas separadas + MIDI</option>
+              <option value="midi">MIDI · partitura</option>
+            </optgroup>
+          </select>
+          <button id="btnDownload" class="pill strong">⬇️ Baixar</button>
+          <span id="fmtSize" class="muted small"></span>
+        </div>
+      </div>
+      <div id="dlStatus" class="muted small"></div>
+
+      <details class="mixer-box">
+        <summary>🎚️ Mixer</summary>
+        <div class="mixer" id="mixer"></div>
+      </details>
     </section>
   </main>
 
