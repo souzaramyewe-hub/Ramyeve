@@ -352,6 +352,8 @@
 
   function syncCloneAi() {
     $('hfBox2').classList.toggle('hidden', !$('cloneAi').checked);
+    // lembra a escolha em todos os caminhos (clique ou marcação automática após gravar a amostra)
+    try { localStorage.setItem('ramyeve-clone-ai', $('cloneAi').checked ? '1' : '0'); } catch (e) { /* sem armazenamento */ }
     if ($('cloneAi').checked && !state.refBlob) $('refStatus').textContent = '👆 Primeiro grave ou envie uma amostra da sua voz.';
   }
 
@@ -406,7 +408,12 @@
     mirror('hfToken', 'hfToken2'); mirror('hfToken2', 'hfToken');
     $('hfToken2').value = $('hfToken').value;
     if (!AIMusic.available()) { $('cloneAi').disabled = true; $('cloneAiBlocked').classList.remove('hidden'); }
-    VoiceClone.loadRef().then((b) => { if (b) { state.refBlob = b; updateRefUI(); } });
+    let wasOn = false;
+    try { wasOn = localStorage.getItem('ramyeve-clone-ai') === '1'; } catch (e) { /* sem armazenamento */ }
+    VoiceClone.loadRef().then((b) => {
+      if (b) { state.refBlob = b; updateRefUI(); }
+      if (wasOn && AIMusic.available()) { $('cloneAi').checked = true; syncCloneAi(); }
+    });
   }
 
   function rememberToken(token) {
@@ -663,6 +670,15 @@
       $('aiBlocked').classList.remove('hidden');
     }
     try { const t = localStorage.getItem(TOKEN_KEY); if (t) $('hfToken').value = t; } catch (e) { /* sem armazenamento */ }
+    const saveToken = () => {
+      const t = currentToken();
+      try {
+        if ($('hfRemember').checked && /^hf_/.test(t)) localStorage.setItem(TOKEN_KEY, t);
+        if (!$('hfRemember').checked) localStorage.removeItem(TOKEN_KEY);
+      } catch (e) { /* sem armazenamento */ }
+    };
+    ['hfToken', 'hfToken2'].forEach((id) => $(id).addEventListener('input', () => setTimeout(saveToken, 0)));
+    $('hfRemember').addEventListener('change', saveToken);
   }
 
   async function generateAI(song) {
