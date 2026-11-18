@@ -75,7 +75,11 @@ textarea::placeholder, input::placeholder { color: #6f6d84; }
 textarea:focus, select:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 label { display: block; font-weight: 600; font-size: .9rem; margin: 0 0 6px; }
 
-.styles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.genre { display: grid; gap: 8px; }
+.field-label { font-weight: 600; font-size: .9rem; }
+.styles { display: flex; flex-wrap: wrap; gap: 8px; }
+.metro-sound { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 500; }
+.metro-sound select { width: auto; padding: 6px 10px; border-radius: 999px; font-size: .88rem; }
 .style-chip {
   border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px;
   padding: 7px 14px; font: 600 .88rem var(--font-body); cursor: pointer;

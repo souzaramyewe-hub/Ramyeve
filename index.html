@@ -37,18 +37,22 @@
       <div class="panel" id="panel-texto">
         <label for="prompt" class="sr-only">Descreva a música</label>
         <textarea id="prompt" rows="2" placeholder="Ex.: rock sobre liberdade na estrada"></textarea>
-        <div class="styles" id="styleChips" aria-label="Estilos"></div>
         <details class="ideas">
           <summary>Sem ideias? Veja exemplos</summary>
           <div class="chips" id="examples" aria-label="Exemplos"></div>
         </details>
       </div>
 
+      <div class="genre">
+        <span class="field-label">🎸 Ritmo da música <span class="muted">(toque para escolher)</span></span>
+        <div class="styles" id="styleChips" aria-label="Ritmo da música"></div>
+      </div>
+
       <div class="panel hidden" id="panel-voz">
         <p class="muted">Cante, cantarole ou assobie uma melodia, ou envie um áudio. O app encontra as notas e o tom.</p>
 
         <div class="rhythm" aria-labelledby="rhythmTitle">
-          <div class="field-head"><span id="rhythmTitle" class="rhythm-title">🥁 Ritmo</span><span class="muted small" id="rhythmInfo">detectado sozinho</span></div>
+          <div class="field-head"><span id="rhythmTitle" class="rhythm-title">⏱️ Velocidade</span><span class="muted small" id="rhythmInfo">detectado sozinho</span></div>
           <div class="rhythm-row">
             <label class="check"><input type="checkbox" id="rhythmManual"> Eu marco o ritmo</label>
             <div class="bpm-box">
@@ -60,10 +64,16 @@
           </div>
           <div class="rhythm-row">
             <button type="button" class="pill tap" id="btnTap">👆 Toque no ritmo</button>
-            <button type="button" class="pill" id="btnMetroTest">▶ Ouvir o metrônomo</button>
+            <button type="button" class="pill" id="btnMetroTest">▶ Ouvir a marcação</button>
           </div>
-          <label class="check"><input type="checkbox" id="metroOn" checked> Tocar o metrônomo enquanto eu gravo (com 4 batidas de contagem antes)</label>
-          <p class="muted small">Dica: use fone de ouvido para o "tique" do metrônomo não entrar na gravação.</p>
+          <label class="check"><input type="checkbox" id="metroOn" checked> Tocar uma marcação enquanto eu gravo (com 4 batidas de contagem antes)</label>
+          <label class="metro-sound" for="metroSound">Marcação:
+            <select id="metroSound">
+              <option value="beat" selected>🥁 Batida do ritmo escolhido</option>
+              <option value="click">🔔 Só o tique do metrônomo</option>
+            </select>
+          </label>
+          <p class="muted small">Dica: use fone de ouvido para a marcação não entrar na gravação.</p>
         </div>
 
         <div id="countIn" class="count-in hidden" aria-live="assertive"></div>
@@ -75,8 +85,8 @@
         </div>
         <audio id="recPreview" controls class="hidden"></audio>
         <div id="voiceInfo" class="voice-info hidden"></div>
-        <label for="voicePrompt" class="sr-only">Estilo desejado</label>
-        <textarea id="voicePrompt" rows="1" placeholder="Estilo desejado. Ex.: rock pesado"></textarea>
+        <label for="voicePrompt" class="sr-only">Detalhes do estilo</label>
+        <textarea id="voicePrompt" rows="1" placeholder="Detalhes (opcional). Ex.: pesado, com sanfona, triste"></textarea>
         <label class="check"><input type="checkbox" id="includeVoice" checked> Incluir minha gravação original</label>
       </div>
 

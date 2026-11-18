@@ -172,5 +172,8 @@
     return true;
   }
 
-  global.Sampler = { ensure, ensureForSong, playNote, playDrum, bankFor, INSTRUMENT_BANK };
+  /* carrega só a bateria do estilo (para a batida durante a gravação) */
+  function ensureKit(style) { return ensure(kitFor(style)); }
+
+  global.Sampler = { ensure, ensureForSong, ensureKit, playNote, playDrum, bankFor, INSTRUMENT_BANK };
 })(window);

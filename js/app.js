@@ -79,6 +79,7 @@
   }
 
   function syncStyleChips() {
+    if (typeof metroPreview !== 'undefined' && metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir a marcação'; }
     document.querySelectorAll('.style-chip').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === $('styleSel').value)));
   }
 
@@ -423,8 +424,8 @@
     const metro = $('metroOn').checked, man = $('rhythmManual').checked;
     $('voiceBpm').disabled = !(metro || man);
     $('bpmMinus').disabled = $('bpmPlus').disabled = !(metro || man);
-    $('rhythmInfo').textContent = metro ? 'metrônomo a ' + voiceBpm() + ' bpm' : man ? voiceBpm() + ' bpm (marcado por você)' : 'detectado sozinho';
-    if (metroPreview) { metroPreview.stop(); metroPreview = startMetro(voiceBpm(), audioCtx().currentTime + 0.05); }
+    $('rhythmInfo').textContent = metro ? 'marcação a ' + voiceBpm() + ' bpm' : man ? voiceBpm() + ' bpm (marcado por você)' : 'detectado sozinho';
+    if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir a marcação'; }
   }
 
   /* "tique" do metrônomo: mais agudo no 1º tempo de cada compasso */
@@ -440,23 +441,62 @@
     o.start(time); o.stop(time + 0.06);
   }
 
-  /* Metrônomo com agendamento antecipado (não atrasa mesmo com a página ocupada). */
-  function startMetro(bpm, startAt, onBeat) {
+  /* estilo usado para a batida: o escolhido nos botões de ritmo (ou pop) */
+  function grooveStyle() {
+    const id = $('styleSel').value;
+    const st = STYLES.byId[id !== 'auto' ? id : 'pop'];
+    return st && !st.noDrums ? st : null;
+  }
+  const VEL = { x: 1, o: 0.7, g: 0.4, r: 0.75 };
+
+  /*
+   * Metrônomo com agendamento antecipado (não atrasa mesmo com a página ocupada).
+   * opts.countIn: quantas batidas só de "tique" antes; opts.groove: estilo cuja bateria
+   * toca depois da contagem (em vez do tique).
+   */
+  function startMetro(bpm, startAt, onBeat, opts) {
+    opts = opts || {};
     const ctx = audioCtx();
-    const beat = 60 / bpm;
-    let i = 0;
+    const beat = 60 / bpm, step = beat / 4;
+    const countIn = opts.countIn || 0;
+    const groove = opts.groove && window.Sampler ? opts.groove : null;
+    const out = ctx.createGain(); out.gain.value = 0.7; out.connect(ctx.destination);
+    let i = 0;            // batidas (para a contagem e o aviso na tela)
+    let s16 = 0;          // semicolcheias da batida, depois da contagem
+    const grooveStart = startAt + countIn * beat;
     const timers = [];
     const schedule = () => {
-      while (startAt + i * beat < ctx.currentTime + 0.2) {
+      const horizon = ctx.currentTime + 0.2;
+      while (startAt + i * beat < horizon) {
         const when = startAt + i * beat;
-        click(ctx, when, i % 4 === 0);
+        if (!groove || i < countIn) click(ctx, when, i % 4 === 0);
         if (onBeat) { const k = i; timers.push(setTimeout(() => onBeat(k), Math.max(0, (when - ctx.currentTime) * 1000))); }
         i++;
+      }
+      if (groove) {
+        while (grooveStart + s16 * step < horizon) {
+          const when = grooveStart + s16 * step;
+          for (const [lane, pat] of Object.entries(groove.drums)) {
+            const ch = pat[s16 % 16];
+            if (!ch || ch === '.') continue;
+            if (!Sampler.playDrum(ctx, out, when, lane, VEL[ch] || 1, groove) && lane === 'kick') click(ctx, when, true);
+          }
+          s16++;
+        }
       }
     };
     schedule();
     const id = setInterval(schedule, 25);
-    return { stop() { clearInterval(id); timers.forEach(clearTimeout); } };
+    return { stop() { clearInterval(id); timers.forEach(clearTimeout); setTimeout(() => out.disconnect(), 400); } };
+  }
+
+  /* prepara a bateria do ritmo escolhido (se a marcação for a batida) */
+  async function grooveForRecording() {
+    if ($('metroSound').value !== 'beat') return null;
+    const st = grooveStyle();
+    if (!st || !window.Sampler) return null;
+    try { await Sampler.ensureKit(st); } catch (e) { /* usa o tique */ }
+    return st;
   }
 
   function tap() {
@@ -486,9 +526,13 @@
     $('rhythmManual').onchange = syncRhythm;
     $('metroOn').onchange = syncRhythm;
     $('btnMetroTest').onclick = () => {
-      if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir o metrônomo'; return; }
-      metroPreview = startMetro(voiceBpm(), audioCtx().currentTime + 0.05);
-      $('btnMetroTest').textContent = '■ Parar o metrônomo';
+      if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir a marcação'; return; }
+      $('btnMetroTest').disabled = true;
+      grooveForRecording().then((st) => {
+        $('btnMetroTest').disabled = false;
+        metroPreview = startMetro(voiceBpm(), audioCtx().currentTime + 0.05, null, { groove: st });
+        $('btnMetroTest').textContent = '■ Parar a marcação';
+      });
     };
     syncRhythm();
   }
@@ -499,6 +543,8 @@
 
   async function toggleRecord() {
     if (rec) { rec.stop(); return; }
+    // a bateria do ritmo escolhido precisa estar pronta antes da contagem
+    const groovePrepared = $('metroOn').checked ? await grooveForRecording() : null;
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -526,7 +572,7 @@
     };
     // metrônomo: 4 batidas de contagem e depois continua marcando o ritmo
     let metro = null, grid = null, recStartCtx = null;
-    if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir o metrônomo'; }
+    if (metroPreview) { metroPreview.stop(); metroPreview = null; $('btnMetroTest').textContent = '▶ Ouvir a marcação'; }
     const useMetro = $('metroOn').checked;
     const bpm = voiceBpm();
     const metroStart = ctx.currentTime + 0.3;
@@ -535,9 +581,9 @@
       $('countIn').classList.remove('hidden');
       metro = startMetro(bpm, metroStart, (k) => {
         if (k < 4) $('countIn').textContent = String(k + 1);
-        else if (k === 4) { $('countIn').textContent = '🎤 Cante!'; setStatus('Gravando… cante no ritmo do metrônomo e clique em Parar.'); }
+        else if (k === 4) { $('countIn').textContent = '🎤 Cante!'; setStatus('Gravando… cante no ritmo e clique em Parar.'); }
         else if (k === 8) $('countIn').classList.add('hidden');
-      });
+      }, { countIn: 4, groove: groovePrepared });
     }
     mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     mr.onstop = async () => {
