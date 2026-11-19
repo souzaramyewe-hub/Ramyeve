@@ -10,7 +10,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e0492f'/><g fill='white'><rect x='7' y='12' width='3' height='8' rx='1.5'/><rect x='12' y='7' width='3' height='18' rx='1.5'/><rect x='17' y='10' width='3' height='12' rx='1.5'/><rect x='22' y='14' width='3' height='4' rx='1.5'/></g></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=202611192110">
 </head>
 <body>
   <header class="top">
@@ -128,7 +128,8 @@
           <label class="check"><input type="checkbox" id="cloneAi"> Cantar com a minha voz real (IA)</label>
           <div id="hfBox2" class="ai-box hidden">
             <label for="hfToken2">Sua chave grátis do Hugging Face</label>
-            <input type="password" id="hfToken2" placeholder="hf_..." autocomplete="off" spellcheck="false">
+            <input type="text" class="secret" id="hfToken2" placeholder="hf_..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
+            <span class="key-state small" data-key-state></span>
             <span class="muted small">É a mesma chave de Ajustes → IA. Como conseguir: crie uma conta grátis em huggingface.co, abra huggingface.co/settings/tokens, crie um token do tipo <b>Read</b> e cole aqui.</span>
           </div>
           <p id="cloneAiBlocked" class="muted small hidden">Indisponível nesta versão de teste, que bloqueia conexões com outros sites. Funciona na versão completa (GitHub Pages).</p>
@@ -173,7 +174,8 @@
           <p id="aiBlocked" class="muted small hidden">Indisponível nesta versão de teste. Funciona na versão completa (GitHub Pages).</p>
           <div id="aiBox" class="ai-box hidden">
             <label for="hfToken">Sua chave grátis do Hugging Face</label>
-            <input type="password" id="hfToken" placeholder="hf_..." autocomplete="off" spellcheck="false">
+            <input type="text" class="secret" id="hfToken" placeholder="hf_..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other">
+            <span class="key-state small" data-key-state></span>
             <label class="check small"><input type="checkbox" id="hfRemember" checked> Lembrar neste aparelho</label>
             <details class="howto">
               <summary>Como conseguir a chave grátis</summary>
@@ -280,18 +282,18 @@
 
   <footer class="wrap muted">Tudo é gerado no seu navegador. Nenhum áudio sai do seu aparelho.<br>Instrumentos gravados: FluidR3_GM, de Frank Wen (CC BY 3.0). Baterias: kringel-samples / Sonic Pi / TR-808 Fischer (CC0).</footer>
 
-  <script src="js/theory.js"></script>
-  <script src="js/styles.js"></script>
-  <script src="js/textAnalyzer.js"></script>
-  <script src="js/composer.js"></script>
-  <script src="js/pitch.js"></script>
-  <script src="js/sampler.js"></script>
-  <script src="js/synth.js"></script>
-  <script src="js/voice.js"></script>
-  <script src="js/aiMusic.js"></script>
-  <script src="js/export.js"></script>
-  <script src="js/vendor/lame.min.js"></script>
-  <script src="js/formats.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/theory.js?v=202611192110"></script>
+  <script src="js/styles.js?v=202611192110"></script>
+  <script src="js/textAnalyzer.js?v=202611192110"></script>
+  <script src="js/composer.js?v=202611192110"></script>
+  <script src="js/pitch.js?v=202611192110"></script>
+  <script src="js/sampler.js?v=202611192110"></script>
+  <script src="js/synth.js?v=202611192110"></script>
+  <script src="js/voice.js?v=202611192110"></script>
+  <script src="js/aiMusic.js?v=202611192110"></script>
+  <script src="js/export.js?v=202611192110"></script>
+  <script src="js/vendor/lame.min.js?v=202611192110"></script>
+  <script src="js/formats.js?v=202611192110"></script>
+  <script src="js/app.js?v=202611192110"></script>
 </body>
 </html>

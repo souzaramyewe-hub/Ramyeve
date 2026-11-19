@@ -66,7 +66,7 @@ a { color: var(--accent-2); }
 .composer { padding-block: 34px 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .composer > *, .library > * { min-width: 0; }
 .composer h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); font-weight: 800; text-align: center; margin-bottom: 6px; }
-textarea, select, input[type=number], input[type=password] {
+textarea, select, input[type=number], input[type=password], input.secret {
   width: 100%; font: inherit; color: var(--text); background: var(--surface);
   border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; resize: vertical;
 }
@@ -173,6 +173,9 @@ audio { width: 100%; margin: 6px 0; }
 .engine-opt span { display: grid; gap: 2px; }
 .engine-opt small { font-size: .82rem; line-height: 1.4; }
 .ai-box { display: grid; gap: 8px; }
+.secret { -webkit-text-security: disc; text-security: disc; font-family: var(--font-body); letter-spacing: .08em; }
+.key-state:empty { display: none; }
+.key-state { color: var(--ok); font-weight: 600; }
 .ai-box label { margin: 0; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid label { margin: 0; }

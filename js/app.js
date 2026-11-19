@@ -422,6 +422,7 @@
     if (!AIMusic.available()) { $('cloneAi').disabled = true; $('cloneAiBlocked').classList.remove('hidden'); }
     let wasOn = false;
     try { wasOn = localStorage.getItem('ramyeve-clone-ai') === '1'; } catch (e) { /* sem armazenamento */ }
+    showKeyState();
     VoiceClone.loadRef().then((b) => {
       if (b) { state.refBlob = b; updateRefUI(); }
       if (wasOn && AIMusic.available()) { $('cloneAi').checked = true; syncCloneAi(); }
@@ -682,15 +683,29 @@
       $('aiBlocked').classList.remove('hidden');
     }
     try { const t = localStorage.getItem(TOKEN_KEY); if (t) $('hfToken').value = t; } catch (e) { /* sem armazenamento */ }
+    ['hfToken', 'hfToken2'].forEach((id) => $(id).addEventListener('blur', () => { $(id).value = $(id).value.trim(); }));
     const saveToken = () => {
       const t = currentToken();
       try {
         if ($('hfRemember').checked && /^hf_/.test(t)) localStorage.setItem(TOKEN_KEY, t);
         if (!$('hfRemember').checked) localStorage.removeItem(TOKEN_KEY);
       } catch (e) { /* sem armazenamento */ }
+      showKeyState();
     };
     ['hfToken', 'hfToken2'].forEach((id) => $(id).addEventListener('input', () => setTimeout(saveToken, 0)));
     $('hfRemember').addEventListener('change', saveToken);
+  }
+
+  /* mostra se a chave está guardada neste aparelho */
+  function showKeyState() {
+    let saved = '';
+    try { saved = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { /* sem armazenamento */ }
+    const t = currentToken();
+    let msg = '';
+    if (t && !/^hf_/.test(t)) msg = '⚠️ A chave deve começar com hf_. Confira se colou a chave inteira.';
+    else if (saved && saved === t) msg = '✅ Chave guardada neste aparelho. Não precisa colar de novo.';
+    else if (t) msg = 'Chave colada (não será lembrada: “Lembrar neste aparelho” está desmarcado).';
+    document.querySelectorAll('[data-key-state]').forEach((el) => { el.textContent = msg; el.style.color = /^⚠️/.test(msg) ? '#ff8a8a' : ''; });
   }
 
   async function generateAI(song) {
