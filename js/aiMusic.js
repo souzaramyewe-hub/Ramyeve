@@ -70,6 +70,16 @@
     return what + ' não conseguiu terminar: ' + (m || 'erro desconhecido') + '.';
   }
 
+  /*
+   * Cabeçalho da chave: os servidores do Hugging Face (ZeroGPU) só contam a cota da
+   * pessoa quando a chave vem em "x-hf-authorization" (é o que o cliente oficial faz).
+   * Com "Authorization" o pedido era tratado como anônimo, sem cota.
+   */
+  function hfHeaders(token) {
+    const t = (token || '').trim();
+    return t ? { 'x-hf-authorization': 'Bearer ' + t } : {};
+  }
+
   /* ---------- conversa com um servidor Gradio (fila) ---------- */
 
   const infoCache = {};
@@ -107,7 +117,7 @@
   async function runQueue(space, apiName, data, token, onStatus, busyText) {
     const d = await describe(space, apiName);
     const session = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    const auth = token ? { Authorization: 'Bearer ' + token.trim() } : {};
+    const auth = hfHeaders(token);
     const join = await fetch(space + '/gradio_api/queue/join', {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
@@ -197,7 +207,7 @@
     const onStatus = opts.onStatus || (() => {});
     try {
       onStatus('Enviando a voz para a clonagem…');
-      const auth = opts.token ? { Authorization: 'Bearer ' + opts.token.trim() } : {};
+      const auth = hfHeaders(opts.token);
       const src = await upload(SEEDVC, opts.source, 'voz.wav', auth);
       const ref = await upload(SEEDVC, opts.reference, 'referencia.wav', auth);
       const data = (params) => buildArgs(params, (p) => {
