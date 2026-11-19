@@ -774,14 +774,22 @@
         song = Composer.composeFromText(Object.assign({ prompt, lyrics }, common));
       } else {
         if (!state.voiceNotes || !state.voiceNotes.length) {
-          setStatus('Grave ou envie um trecho cantado primeiro.', true);
-          return;
-        }
+          // sem melodia gravada: cria a melodia pela letra e pelo ritmo escolhido, em vez de travar
+          const lyrics = $('lyrics').value.trim(), detail = $('voicePrompt').value.trim();
+          if (!lyrics && !detail && $('styleSel').value === 'auto') {
+            setStatus('Você ainda não gravou a melodia. Use “● Gravar” ou “📁 Enviar áudio” no quadro de cima, ou escreva uma letra e escolha um ritmo para eu criar a melodia.', true);
+            return;
+          }
+          const manual = $('rhythmManual').checked ? voiceBpm() : common.bpm;
+          song = Composer.composeFromText(Object.assign({}, common, { prompt: detail, lyrics, bpm: manual }));
+          song.melodyFromLyrics = true;
+        } else {
         const manualBpm = $('rhythmManual').checked || ($('metroOn').checked && state.voiceGrid) ? voiceBpm() : common.bpm;
         song = Composer.composeFromVoice(Object.assign({}, common, {
           notes: state.voiceNotes, prompt: $('voicePrompt').value.trim(), lyrics: $('lyrics').value.trim(),
           bpm: state.voiceGrid ? state.voiceGrid.bpm : manualBpm, grid: state.voiceGrid,
         }));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -797,7 +805,7 @@
       let vocalBuffer = null;
       song.singer = null;
       const hasLyrics = !!$('lyrics').value.trim();
-      if ($('singOn').checked && (state.tab === 'texto' || hasLyrics)) {
+      if ($('singOn').checked && (state.tab === 'texto' || hasLyrics || song.melodyFromLyrics)) {
         setStatus('Ensinando a voz a cantar a letra… 🎙️');
         await new Promise((r) => setTimeout(r, 30));
         const profile = singerProfile();
@@ -865,6 +873,7 @@
         ? ['📝 sua melodia tocada ' + s.lyricsFit.reps + 'x para caber a letra inteira']
         : []).concat(s.moods.map((m) => '✨ ' + (MOOD_PT[m] || m)));
     paintCover(s);
+    if (s.melodyFromLyrics) tags.push('🎼 melodia criada pela letra (nenhuma melodia gravada)');
     if (state.render.ai) tags.splice(1, 0, '🤖 Gerada por IA (ACE-Step)');
     $('roll').parentElement.classList.toggle('hidden', !!state.render.ai);
     $('songTags').innerHTML = '';
@@ -951,7 +960,7 @@
   }
 
   function currentPos() {
-    if (!state.playing) return state.offset;
+    if (!state.playing || !state.render) return state.offset || 0;
     return Math.min(state.render.duration, audioCtx().currentTime - state.startAt);
   }
 
